@@ -310,6 +310,20 @@ namespace py_scene_rdl2
                  "           objectName    The name of the object. Must be unique. \n"
                  "Returns the new SceneObject or the existing SceneObject (if the name already existed).")
 
+            .def("deleteSceneObject",
+                 &rdl2::SceneContext::deleteSceneObject,
+                 bp::arg("objectName"),
+                 "Delete a SceneObject from the SceneContext by its name. \n"
+                 "\n"
+                 "The SceneObject will be removed from the SceneContext and its memory will be freed. "
+                 "Any Python references to the deleted object become invalid and must not be used. "
+                 "The SceneVariables singleton object cannot be deleted. \n"
+                 "\n"
+                 "Callers must ensure no other objects still reference the deleted object "
+                 "(e.g. remove it from GeometrySets, LightSets, and Layers first). \n"
+                 "\n"
+                 "Inputs:    objectName    The name of the SceneObject to delete.")
+
             .def("getGeometryListSize",
                  &PySceneContext_getGeometryListSize,
                  "(Python Only) Returns the number of Geometry objects held by this SceneContext.")

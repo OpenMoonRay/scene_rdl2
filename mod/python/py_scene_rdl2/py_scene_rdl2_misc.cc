@@ -415,6 +415,13 @@ namespace py_scene_rdl2
         rdl2::writeSceneToFile(context, filePath);
     }
 
+    static void
+    writeSceneToFileWithOptionsHelper(const rdl2::SceneContext& context, const std::string& filePath,
+                                      bool deltaEncoding, bool skipDefaults)
+    {
+        rdl2::writeSceneToFile(context, filePath, deltaEncoding, skipDefaults);
+    }
+
     void
     registerSceneRdl2UtilsPyBinding()
     {
@@ -425,6 +432,16 @@ namespace py_scene_rdl2
                 "\n"
                 "Inputs:    context     The SceneContext to write out. \n"
                 "           filePath    The path to the .rdla or .rdlb file.");
+
+        bp::def("writeSceneToFile",
+                &writeSceneToFileWithOptionsHelper,
+                ( bp::arg("sceneContext"), bp::arg("filePath"), bp::arg("deltaEncoding"), bp::arg("skipDefaults") ),
+                "Write a SceneContext to a file with encoding options.\n"
+                "\n"
+                "Inputs:    context          The SceneContext to write out.\n"
+                "           filePath         The path to the .rdla or .rdlb file.\n"
+                "           deltaEncoding    Whether to use delta encoding.\n"
+                "           skipDefaults     If set, attributes at their default are not written.");
     }
 
 } // namespace py_scene_rdl2

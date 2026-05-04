@@ -256,6 +256,92 @@ getAttributeValueByName(scene_rdl2::rdl2::SceneObject& sceneObject, const std::s
     return bp::object{ };
 }
 
+bp::object
+getAttributeValueByNameAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                  const std::string& attrName,
+                                  int timestepInt)
+{
+    const scene_rdl2::rdl2::SceneClass& sc = sceneObject.getSceneClass();
+    const scene_rdl2::rdl2::Attribute* attr = sc.getAttribute(attrName);
+
+    if (attr == nullptr) {
+        std::ostringstream oss;
+        oss << "Unknown attribute: " << attrName;
+        PyErr_SetString(PyExc_KeyError, oss.str().c_str());
+        bp::throw_error_already_set();
+    }
+
+    if (timestepInt != 0 && timestepInt != 1) {
+        std::ostringstream oss;
+        oss << "Invalid timestep: " << timestepInt << ". Expected 0 or 1.";
+        PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+        bp::throw_error_already_set();
+    }
+
+    const scene_rdl2::rdl2::AttributeTimestep timestep =
+            static_cast<scene_rdl2::rdl2::AttributeTimestep>(timestepInt);
+
+    if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_BOOL)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Bool>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_INT)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Int>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_LONG)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Long>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_FLOAT)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Float>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_DOUBLE)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Double>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_STRING)) {
+        return extractPrimitiveAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::String>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_RGB)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Rgb>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_RGBA)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Rgba>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC2F)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec2f>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC2D)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec2d>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC3F)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec3f>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC3D)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec3d>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC4F)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec4f>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC4D)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Vec4d>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT4F)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Mat4f>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT4D)) {
+        return extractAttrValueAsPyObjAtTimestep<scene_rdl2::rdl2::Mat4d>(sceneObject, sc, attrName, timestep);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_SCENE_OBJECT)) {
+        // SceneObject pointers are not blurrable; fall through to default get
+        scene_rdl2::rdl2::SceneObject* objVal = sceneObject.get<scene_rdl2::rdl2::SceneObject*>(attrName);
+        if (objVal)
+            return bp::object(boost::cref(*objVal));
+        else
+            return bp::object();
+    }
+
+    // For vector/indexable types, fall back to the non-timestep version
+    return getAttributeValueByName(sceneObject, attrName);
+}
+
 std::string
 getAttrTypeName(scene_rdl2::rdl2::AttributeType attrType)
 {
@@ -479,14 +565,21 @@ internal_setMatrixAttrValue(scene_rdl2::rdl2::SceneObject& sceneObject,
           "internal_setMatrixVectorAttrValue<T> can only handle matrices");
 
     constexpr std::size_t dimension = getMatrixDimension<T>();
+    constexpr std::size_t expectedSize = dimension * dimension;
 
-    bool isValid = true;
     scene_rdl2::rdl2::AttributeKey<T> attrKey = sc.getAttributeKey<T>(attrName);
     T value { };
 
     // Extract value from boost::python::object
     if (PyList_CheckExact(pyValue.ptr()) == true) {
         bp::list pyList = bp::extract<bp::list>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyList)) != expectedSize) {
+            std::ostringstream oss;
+            oss << "Expected list of size " << expectedSize << " for matrix attribute '"
+                << attrName << "', got size " << bp::len(pyList);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
         for (std::size_t row = 0, idx = 0; row < dimension; ++row) {
             for (std::size_t col = 0; col < dimension; ++col) {
                 value[row][col] =
@@ -497,6 +590,13 @@ internal_setMatrixAttrValue(scene_rdl2::rdl2::SceneObject& sceneObject,
     }
     else if (PyTuple_CheckExact(pyValue.ptr()) == true) {
         bp::tuple pyTuple = bp::extract<bp::tuple>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyTuple)) != expectedSize) {
+            std::ostringstream oss;
+            oss << "Expected tuple of size " << expectedSize << " for matrix attribute '"
+                << attrName << "', got size " << bp::len(pyTuple);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
         for (std::size_t row = 0, idx = 0; row < dimension; ++row) {
             for (std::size_t col = 0; col < dimension; ++col) {
                 value[row][col] =
@@ -505,12 +605,161 @@ internal_setMatrixAttrValue(scene_rdl2::rdl2::SceneObject& sceneObject,
             }
         }
     }
+    else {
+        PyErr_SetString(PyExc_TypeError,
+                "Value passed to set() must be a list or tuple.");
+        bp::throw_error_already_set();
+    }
 
     // Set the value (NOTE: needs an UpdateGuard)
-    if (isValid) {
-        scene_rdl2::rdl2::SceneObject::UpdateGuard updateGuard(&sceneObject);
-        sceneObject.set(attrKey, value);
+    scene_rdl2::rdl2::SceneObject::UpdateGuard updateGuard(&sceneObject);
+    sceneObject.set(attrKey, value);
+}
+
+template <typename T>
+void
+internal_setPrimitiveAttrValueAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                        const scene_rdl2::rdl2::SceneClass& sc,
+                                        const std::string& attrName,
+                                        bp::object& pyValue,
+                                        scene_rdl2::rdl2::AttributeTimestep timestep)
+{
+    static_assert(
+            (std::is_same<T, scene_rdl2::rdl2::Bool>::value ||
+             std::is_same<T, scene_rdl2::rdl2::Int>::value ||
+             std::is_same<T, scene_rdl2::rdl2::Long>::value ||
+             std::is_same<T, scene_rdl2::rdl2::Float>::value ||
+             std::is_same<T, scene_rdl2::rdl2::Double>::value ||
+             std::is_same<T, scene_rdl2::rdl2::String>::value),
+             "internal_setPrimitiveAttrValueAtTimestep<T> can only handle primitive types");
+
+    const scene_rdl2::rdl2::AttributeKey<T> key = sc.getAttributeKey<T>(attrName);
+    T value = static_cast<T>(bp::extract<T>(pyValue));
+    scene_rdl2::rdl2::SceneObject::UpdateGuard updateGuard(&sceneObject);
+    sceneObject.set(key, value, timestep);
+}
+
+template <typename T>
+void
+internal_setVecAttrValueAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                  const scene_rdl2::rdl2::SceneClass& sc,
+                                  const std::string& attrName,
+                                  bp::object& pyValue,
+                                  scene_rdl2::rdl2::AttributeTimestep timestep)
+{
+    static_assert(
+        (std::is_same<T, scene_rdl2::rdl2::Vec2f>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Vec2d>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Vec3f>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Vec3d>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Vec4f>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Vec4d>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Rgb>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Rgba>::value),
+         "internal_setVecAttrValueAtTimestep<T> cannot handle type T.");
+
+    constexpr std::size_t T_size = getElementCount<T>();
+
+    scene_rdl2::rdl2::AttributeKey<T> attrKey = sc.getAttributeKey<T>(attrName);
+    T value { };
+
+    if (PyList_CheckExact(pyValue.ptr()) == true) {
+        bp::list pyList = bp::extract<bp::list>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyList)) != T_size) {
+            std::ostringstream oss;
+            oss << "Expected list of size " << T_size << " for attribute '" << attrName
+                << "', got size " << bp::len(pyList);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
+        for (std::size_t idx = 0; idx < T_size; ++idx) {
+            value[idx] = bp::extract<typename T::Scalar>(pyList[idx]);
+        }
     }
+    else if (PyTuple_CheckExact(pyValue.ptr()) == true) {
+        bp::tuple pyTuple = bp::extract<bp::tuple>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyTuple)) != T_size) {
+            std::ostringstream oss;
+            oss << "Expected tuple of size " << T_size << " for attribute '" << attrName
+                << "', got size " << bp::len(pyTuple);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
+        for (std::size_t idx = 0; idx < T_size; ++idx) {
+            value[idx] = bp::extract<typename T::Scalar>(pyTuple[idx]);
+        }
+    }
+    else {
+        PyErr_SetString(PyExc_TypeError,
+                "Value passed to set() must be a list or tuple.");
+        bp::throw_error_already_set();
+    }
+
+    scene_rdl2::rdl2::SceneObject::UpdateGuard updateGuard(&sceneObject);
+    sceneObject.set(attrKey, value, timestep);
+}
+
+template <typename T>
+static void
+internal_setMatrixAttrValueAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                      const scene_rdl2::rdl2::SceneClass& sc,
+                                      const std::string& attrName,
+                                      bp::object& pyValue,
+                                      scene_rdl2::rdl2::AttributeTimestep timestep)
+{
+    static_assert(
+        (std::is_same<T, scene_rdl2::rdl2::Mat4f>::value ||
+         std::is_same<T, scene_rdl2::rdl2::Mat4d>::value),
+          "internal_setMatrixAttrValueAtTimestep<T> can only handle Mat4f/Mat4d");
+
+    constexpr std::size_t dimension = getMatrixDimension<T>();
+    constexpr std::size_t expectedSize = dimension * dimension;
+
+    scene_rdl2::rdl2::AttributeKey<T> attrKey = sc.getAttributeKey<T>(attrName);
+    T value { };
+
+    if (PyList_CheckExact(pyValue.ptr()) == true) {
+        bp::list pyList = bp::extract<bp::list>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyList)) != expectedSize) {
+            std::ostringstream oss;
+            oss << "Expected list of size " << expectedSize << " for matrix attribute '"
+                << attrName << "', got size " << bp::len(pyList);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
+        for (std::size_t row = 0, idx = 0; row < dimension; ++row) {
+            for (std::size_t col = 0; col < dimension; ++col) {
+                value[row][col] =
+                        bp::extract<typename T::Vector::Scalar>(pyList[idx]);
+                ++idx;
+            }
+        }
+    }
+    else if (PyTuple_CheckExact(pyValue.ptr()) == true) {
+        bp::tuple pyTuple = bp::extract<bp::tuple>(pyValue);
+        if (static_cast<std::size_t>(bp::len(pyTuple)) != expectedSize) {
+            std::ostringstream oss;
+            oss << "Expected tuple of size " << expectedSize << " for matrix attribute '"
+                << attrName << "', got size " << bp::len(pyTuple);
+            PyErr_SetString(PyExc_ValueError, oss.str().c_str());
+            bp::throw_error_already_set();
+        }
+        for (std::size_t row = 0, idx = 0; row < dimension; ++row) {
+            for (std::size_t col = 0; col < dimension; ++col) {
+                value[row][col] =
+                        bp::extract<typename T::Vector::Scalar>(pyTuple[idx]);
+                ++idx;
+            }
+        }
+    }
+    else {
+        PyErr_SetString(PyExc_TypeError,
+                "Value passed to set() must be a list or tuple.");
+        bp::throw_error_already_set();
+    }
+
+    scene_rdl2::rdl2::SceneObject::UpdateGuard updateGuard(&sceneObject);
+    sceneObject.set(attrKey, value, timestep);
 }
 
 //-------------------------------------------------------------------------------------
@@ -1034,6 +1283,85 @@ extractAndSetAttributeValue(scene_rdl2::rdl2::SceneObject& sceneObject,
     }
     else {
         throw std::runtime_error("TEMP DEBUG: Object of unknown type passed to SceneObject.set()");
+    }
+}
+
+void
+extractAndSetAttributeValueAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                      const std::string& attrName,
+                                      bp::object& pyValue,
+                                      int timestepInt)
+{
+    if (timestepInt < 0 ||
+        timestepInt >= static_cast<int>(scene_rdl2::rdl2::AttributeTimestep::NUM_TIMESTEPS)) {
+        throw std::runtime_error("Invalid attribute timestep for '" + attrName + "'");
+    }
+
+    const scene_rdl2::rdl2::AttributeTimestep timestep =
+            static_cast<scene_rdl2::rdl2::AttributeTimestep>(timestepInt);
+
+    const scene_rdl2::rdl2::SceneClass& sc = sceneObject.getSceneClass();
+    const scene_rdl2::rdl2::Attribute* attr = sc.getAttribute(attrName);
+    if (!attr) {
+        throw std::runtime_error("Unknown attribute '" + attrName + "'");
+    }
+
+    const scene_rdl2::rdl2::AttributeType attrType = attr->getType();
+
+    switch (attrType) {
+    case scene_rdl2::rdl2::AttributeType::TYPE_BOOL:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::Bool>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_INT:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::Int>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_LONG:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::Long>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_FLOAT:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::Float>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_DOUBLE:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::Double>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_STRING:
+        internal_setPrimitiveAttrValueAtTimestep<scene_rdl2::rdl2::String>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_RGB:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Rgb>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_RGBA:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Rgba>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC2F:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec2f>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC2D:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec2d>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC3F:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec3f>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC3D:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec3d>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC4F:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec4f>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_VEC4D:
+        internal_setVecAttrValueAtTimestep<scene_rdl2::rdl2::Vec4d>(sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_MAT4F:
+        internal_setMatrixAttrValueAtTimestep<scene_rdl2::rdl2::Mat4f>(
+                sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    case scene_rdl2::rdl2::AttributeType::TYPE_MAT4D:
+        internal_setMatrixAttrValueAtTimestep<scene_rdl2::rdl2::Mat4d>(
+                sceneObject, sc, attrName, pyValue, timestep);
+        break;
+    default:
+        throw std::runtime_error(
+                "Attribute type for '" + attrName + "' is not supported by the timestep setter");
     }
 }
 

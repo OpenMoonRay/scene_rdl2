@@ -712,6 +712,28 @@ namespace py_scene_rdl2
 
     template <typename T>
     inline bp::object
+    extractPrimitiveAttrValueAsPyObjAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                               const scene_rdl2::rdl2::SceneClass& sceneClass,
+                                               const std::string& attrName,
+                                               scene_rdl2::rdl2::AttributeTimestep timestep)
+    {
+        static_assert(
+                (std::is_same<T, scene_rdl2::rdl2::Bool>::value   == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Int>::value    == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Long>::value   == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Float>::value  == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Double>::value == true ||
+                 std::is_same<T, scene_rdl2::rdl2::String>::value == true),
+                "py_scene_rdl2::extractPrimitiveAttrValueAsPyObjAtTimestep<T>(...) : Type T must be an rdl2 primitive data type.");
+
+        static_assert(std::is_same<T, scene_rdl2::rdl2::BoolVector>::value == false,
+                "py_scene_rdl2::extractPrimitiveAttrValueAsPyObjAtTimestep<T>(...) : Cannot handle rdl2::BoolVector.");
+
+        return bp::object{ sceneObject.get<T>(sceneClass.getAttributeKey<T>(attrName), timestep) };
+    }
+
+    template <typename T>
+    inline bp::object
     extractAttrValueAsPyObj(scene_rdl2::rdl2::SceneObject& sceneObject, const scene_rdl2::rdl2::SceneClass& sceneClass, const std::string& attrName)
     {
         static_assert(
@@ -727,6 +749,28 @@ namespace py_scene_rdl2
                 "py_scene_rdl2::extractAttrValueAsPyObj<T>(...) : Cannot handle rdl2::BoolVector.");
 
         return bp::object{ boost::cref(sceneObject.get<T>(sceneClass.getAttributeKey<T>(attrName))) };
+    }
+
+    template <typename T>
+    inline bp::object
+    extractAttrValueAsPyObjAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                      const scene_rdl2::rdl2::SceneClass& sceneClass,
+                                      const std::string& attrName,
+                                      scene_rdl2::rdl2::AttributeTimestep timestep)
+    {
+        static_assert(
+                (std::is_same<T, scene_rdl2::rdl2::Bool>::value   == false &&
+                 std::is_same<T, scene_rdl2::rdl2::Int>::value    == false &&
+                 std::is_same<T, scene_rdl2::rdl2::Long>::value   == false &&
+                 std::is_same<T, scene_rdl2::rdl2::Float>::value  == false &&
+                 std::is_same<T, scene_rdl2::rdl2::Double>::value == false &&
+                 std::is_same<T, scene_rdl2::rdl2::String>::value == false),
+                "py_scene_rdl2::extractAttrValueAsPyObjAtTimestep<T>(...) : Type T cannot be an rdl2 primitive data type.");
+
+        static_assert(std::is_same<T, scene_rdl2::rdl2::BoolVector>::value == false,
+                "py_scene_rdl2::extractAttrValueAsPyObjAtTimestep<T>(...) : Cannot handle rdl2::BoolVector.");
+
+        return bp::object{ boost::cref(sceneObject.get<T>(sceneClass.getAttributeKey<T>(attrName), timestep)) };
     }
 
     template <typename T>
@@ -787,10 +831,21 @@ namespace py_scene_rdl2
     bp::object
     getAttributeValueByName(scene_rdl2::rdl2::SceneObject& sceneObject, const std::string& attrName);
 
+    bp::object
+    getAttributeValueByNameAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                      const std::string& attrName,
+                                      int timestep);
+
     void
     extractAndSetAttributeValue(scene_rdl2::rdl2::SceneObject& sceneObject,
                                 const std::string& attrName,
                                 bp::object& value);
+
+    void
+    extractAndSetAttributeValueAtTimestep(scene_rdl2::rdl2::SceneObject& sceneObject,
+                                         const std::string& attrName,
+                                         bp::object& value,
+                                         int timestep);
 
     bp::dict
     getAttributeNamesAndTypes(scene_rdl2::rdl2::SceneClass& sceneClass);

@@ -100,6 +100,16 @@ namespace py_scene_rdl2
                 .value("BLURRABLE", rdl2::AttributeFlags::FLAGS_BLURRABLE)
                 .value("ENUMERABLE", rdl2::AttributeFlags::FLAGS_ENUMERABLE)
                 .value("FILENAME", rdl2::AttributeFlags::FLAGS_FILENAME);
+
+        bp::enum_<rdl2::AttributeTimestep>("AttributeTimestep",
+                "Defines timesteps for blurrable attributes.\n"
+                "\n"
+                "Blurrable attributes store two values: one at TIMESTEP_BEGIN (0.0) "
+                "and one at TIMESTEP_END (1.0). When an attribute is blurrable, use "
+                "these timestep values to retrieve the value at each end of the "
+                "motion blur interval.")
+                .value("TIMESTEP_BEGIN", rdl2::TIMESTEP_BEGIN)
+                .value("TIMESTEP_END", rdl2::TIMESTEP_END);
     }
 } // namespace py_scene_rdl2
 

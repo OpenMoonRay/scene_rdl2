@@ -415,10 +415,14 @@ AsciiWriter::blurredValueToString(const SceneObject* so, const Attribute* attr) 
 {
     std::ostringstream s;
 
-    // TODO: only output single value if begin and end are the same
     if (attr->isBlurrable()) {
-        s << "blur(" << valueToString(so, attr, TIMESTEP_BEGIN) << ", " <<
-                valueToString(so, attr, TIMESTEP_END) << ")";
+        const std::string beginStr = valueToString(so, attr, TIMESTEP_BEGIN);
+        const std::string endStr = valueToString(so, attr, TIMESTEP_END);
+        if (beginStr == endStr) {
+            s << beginStr;
+        } else {
+            s << "blur(" << beginStr << ", " << endStr << ")";
+        }
     } else {
         s << valueToString(so, attr, TIMESTEP_BEGIN);
     }
@@ -435,7 +439,10 @@ AsciiWriter::boundValueToString(const SceneObject* so, const Attribute* attr) co
     const SceneObject* boundObject = nullptr;
     try {
         boundObject = fetchBinding(so, attr);
-        isBinding = true;
+        // Only treat it as a binding if we actually have a bound object
+        // (not nullptr). Otherwise bindable attributes with no binding will
+        // output bind(undef(), value) instead of just the value.
+        isBinding = (boundObject != nullptr);
     } catch (const except::TypeError&) {
         isBinding = false;
     }

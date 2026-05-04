@@ -281,6 +281,31 @@ namespace py_scene_rdl2
                  bp::arg("attrName"),
                  "WRITE HELP LATER")
 
+            .def("get",
+                 &getAttributeValueByNameAtTimestep,
+                 (bp::arg("attrName"), bp::arg("timestep")),
+                 "Get the value of an attribute at a specific timestep.\n"
+                 "For blurrable attributes, use AttributeTimestep.TIMESTEP_BEGIN (0)\n"
+                 "or AttributeTimestep.TIMESTEP_END (1) to retrieve the value at\n"
+                 "each end of the motion blur interval.")
+
+            .def("getBinding",
+                 +[](scene_rdl2::rdl2::SceneObject& self, const std::string& attrName) -> bp::object {
+                     const scene_rdl2::rdl2::SceneClass& sc = self.getSceneClass();
+                     const scene_rdl2::rdl2::Attribute* attr = sc.getAttribute(attrName);
+                     if (!attr) {
+                         throw std::runtime_error("Attribute '" + attrName + "' not found");
+                     }
+                     scene_rdl2::rdl2::SceneObject* binding = self.getBinding(*attr);
+                     if (binding) {
+                         return bp::object(boost::cref(*binding));
+                     } else {
+                         return bp::object();  // Python None
+                     }
+                 },
+                 bp::arg("attrName"),
+                 "Get the bound SceneObject for an attribute, or None if not bound")
+
              //------------------------------------------------
              // Set Attribute values
 
@@ -288,6 +313,39 @@ namespace py_scene_rdl2
                  &extractAndSetAttributeValue,
                  (bp::arg("attrName"), bp::arg("attrValue")),
                  "WRITE HELP LATER")
+
+            .def("set",
+                 &extractAndSetAttributeValueAtTimestep,
+                 (bp::arg("attrName"), bp::arg("attrValue"), bp::arg("timestep")),
+                 "Set the value of an attribute at a specific timestep.\n"
+                 "For blurrable attributes, use AttributeTimestep.TIMESTEP_BEGIN (0)\n"
+                 "or AttributeTimestep.TIMESTEP_END (1).")
+
+            .def("setBinding",
+                 +[](scene_rdl2::rdl2::SceneObject& self, const std::string& attrName, scene_rdl2::rdl2::SceneObject* binding) {
+                     const scene_rdl2::rdl2::SceneClass& sc = self.getSceneClass();
+                     const scene_rdl2::rdl2::Attribute* attr = sc.getAttribute(attrName);
+                     if (!attr) {
+                         throw std::runtime_error("Attribute '" + attrName + "' not found");
+                     }
+                     if (!attr->isBindable()) {
+                         throw std::runtime_error("Attribute '" + attrName + "' is not bindable");
+                     }
+                     scene_rdl2::rdl2::SceneObject::UpdateGuard guard(&self);
+                     self.setBinding(*attr, binding);
+                 },
+                 (bp::arg("attrName"), bp::arg("binding")),
+                 "Set the binding for an attribute to a SceneObject (map), or None to unbind.\n"
+                 "This method manages its own update session for standalone calls.\n"
+                 "Use beginUpdate()/endUpdate() only to batch multiple set() or setBinding() operations.")
+
+            .def("beginUpdate",
+                 &rdl2::SceneObject::beginUpdate,
+                 "Begins an update session for batching multiple set() or setBinding() operations.")
+
+            .def("endUpdate",
+                 &rdl2::SceneObject::endUpdate,
+                 "Ends an update session started with beginUpdate() after batching multiple set() or setBinding() operations.")
 
             //------------------------------------------------
             // Downcasting to derived types:

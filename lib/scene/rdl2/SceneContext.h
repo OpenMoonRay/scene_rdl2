@@ -234,6 +234,20 @@ public:
     SceneObject* createSceneObject(const std::string& className, const std::string& objectName);
 
     /**
+     * Delete a SceneObject from the SceneContext by its name.
+     *
+     * The SceneObject will be removed from the SceneContext and its memory
+     * will be freed. Any pointers to the deleted object become invalid.
+     * The SceneVariables singleton object cannot be deleted.
+     *
+     * Callers must ensure no other objects still reference the deleted object
+     * (e.g. remove it from GeometrySets, LightSets, and Layers first).
+     *
+     * @param   objectName  The name of the SceneObject to delete.
+     */
+    void deleteSceneObject(const std::string& objectName);
+
+    /**
      * Calls update() on any of the following that are modified: SceneVariables,
      * the active Camera, the supplied Layer, and assigned SceneObjects and
      * SceneObject attributes in the Layer. Should only be called after

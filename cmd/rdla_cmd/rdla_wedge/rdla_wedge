@@ -1,0 +1,1336 @@
+#!/bin/env python3
+# Copyright 2026 DreamWorks Animation LLC
+# SPDX-License-Identifier: Apache-2.0
+
+#
+# @file rdla_wedge
+# $Id$
+#
+
+import os
+import sys
+import shutil
+import subprocess
+import re
+import time
+import multiprocessing
+from optparse import OptionParser
+from math import pow
+import scene_rdl2
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+def printError(redText, *plainText):
+    output = '%sERROR: %s%s' % (bcolors.FAIL, redText, bcolors.ENDC)
+    if plainText:
+        for pt in plainText:
+            output = output + '%s' % pt
+    print(output)
+
+def printOkGreen(greenText, *plainText):
+    output = '%s%s%s' % (bcolors.OKGREEN, greenText, bcolors.ENDC)
+    if plainText:
+        for pt in plainText:
+            output = output + '%s' % pt
+    print(output)
+
+def printOkBlue(blueText, *plainText):
+    output = '%s%s%s' % (bcolors.OKBLUE, blueText, bcolors.ENDC)
+    if plainText:
+        for pt in plainText:
+            output = output + '%s' % pt
+    print(output)
+
+def linstep(inmin, inmax, outmin, outmax, time, power):
+    t = pow((float(time) - float(inmin)) / (float(inmax) - float(inmin)), power)
+    if t < 0: t = 0
+    if t > 1: t = 1
+    return outmin + t * (outmax - outmin)
+
+def pingpong(startFrame, endFrame, minVal, maxVal, time, power):
+    midFrame = endFrame / 2.0
+    if time <= midFrame:
+        # First half: go from minVal to maxVal
+        return linstep(startFrame, midFrame, minVal, maxVal, time, power)
+    else:
+        # Second half: go from maxVal back to minVal
+        return linstep(midFrame, endFrame, maxVal, minVal, time, power)
+
+def animate(startFrame, endFrame, minVal, maxVal, time, power, usePingpong):
+    if usePingpong:
+        return pingpong(startFrame, endFrame, minVal, maxVal, time, power)
+    else:
+        outVal = minVal + \
+            linstep(startFrame, endFrame, 0, maxVal - minVal, time, power)
+        return outVal
+
+def runCmd(textCmd, useShell):
+    p = subprocess.Popen(textCmd,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=useShell)
+
+    (tmpStdOut, tmpStdErr) = p.communicate()
+
+    if p.returncode and p.returncode != 0:
+        printError('cmd failed with return code: ', p.returncode)
+        print('cmd = %s' % (' '.join(textCmd)))
+        print('stdout = %s' % tmpStdOut)
+        print('stderr = %s' % tmpStdErr)
+        return False
+    else:
+        return True
+
+def runCmdWithOutput(textCmd, useShell):
+    """Run command and return (success, stdout, stderr)"""
+    p = subprocess.Popen(textCmd,
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=useShell)
+
+    (tmpStdOut, tmpStdErr) = p.communicate()
+
+    if p.returncode and p.returncode != 0:
+        printError('cmd failed with return code: ', p.returncode)
+        print('cmd = %s' % (' '.join(textCmd)))
+        print('stdout = %s' % tmpStdOut)
+        print('stderr = %s' % tmpStdErr)
+        return (False, tmpStdOut, tmpStdErr)
+    else:
+        return (True, tmpStdOut, tmpStdErr)
+
+
+def overlayTextCmd(inputFile,
+                   textColor,
+                   textSize,
+                   parameterName,
+                   value,
+                   vertOffset,
+                   verbose,
+                   position,
+                   outputFile):
+
+    # Calculate y position based on position (top or bottom)
+    # oiiotool measures y from top of image
+    # Add base offset so text isn't at the very edge
+    if position == 'top':
+        # Use text size as base offset so text position scales with text size
+        y_pos = textSize + int(vertOffset)
+    else:
+        # For bottom positioning, we'd ideally need image height
+        # Using a large value that works for typical render resolutions
+        y_pos = 2000 + int(vertOffset)
+    
+    x_pos = 8
+    
+    # Convert common color names to RGB values for oiiotool
+    colorMap = {
+        'white': '1,1,1',
+        'black': '0,0,0',
+        'red': '1,0,0',
+        'green': '0,1,0',
+        'blue': '0,0,1',
+        'yellow': '1,1,0',
+        'cyan': '0,1,1',
+        'magenta': '1,0,1'
+    }
+    
+    colorValue = colorMap.get(textColor.lower(), '1,1,1')  # default to white
+    
+    # Build text option with all modifiers
+    textOption = '--text:x=%d:y=%d:size=%d:color=%s' % (x_pos, y_pos, textSize, colorValue)
+    textContent = '%s=%s' % (parameterName, value)
+    
+    textCmd = ['oiiotool',
+               '-i', inputFile,
+               textOption,
+               textContent,
+               '-o', outputFile]
+
+    if verbose:
+        print('\t' + ' '.join(textCmd))
+
+    return runCmd(textCmd, False)
+
+def convert_exr_to_png_with_alpha(args):
+    """Helper function for parallel EXR to PNG conversion with alpha handling"""
+    imgFile, pngFile, verbose = args
+    
+    # Use oiiotool to composite over black background and convert colorspace
+    # Create black RGBA image using same geometry as input, then composite
+    # Limit threads to 1 since we're running multiple processes in parallel
+    oiioCmd = ['oiiotool',
+               '--threads', '1',  # Use single thread per process
+               imgFile,
+               '--create', '{TOP.width}x{TOP.height}', '4',  # Create black RGBA image
+               '--swap',
+               '--over',  # Composite image over black background
+               '--ch', 'R,G,B',  # Keep only RGB channels
+               '--iscolorspace', 'linear',
+               '--tocolorspace', 'sRGB',
+               '-o', pngFile]
+    
+    if verbose:
+        print('\t' + ' '.join(oiioCmd))
+    
+    return runCmd(oiioCmd, False)
+
+def render_single_frame(args):
+    """Helper function for parallel frame rendering"""
+    (frameNumber, tmpRdlaFiles, outputFile, exec_mode, verbose, 
+     apply_text, text_params, show_mcrt, show_frame_number, show_parameter,
+     has_parameter_animation, wedge_value) = args
+    
+    # Render the frame - add all rdla files with -in flags
+    rndrCmd = ['moonray']
+    for rdlaFile in tmpRdlaFiles:
+        rndrCmd.extend(['-in', rdlaFile])
+    
+    # Always inject wedge and frame_num variables
+    rndrCmd.extend(['-out', outputFile,
+                    '-rdla_set', 'wedge', str(wedge_value),
+                    '-rdla_set', 'frame_num', str(frameNumber)])
+    
+    rndrCmd.extend(['-exec_mode', exec_mode])
+    
+    # Add -info flag if we need MCRT time
+    if show_mcrt:
+        rndrCmd.insert(1, '-info')
+    
+    if verbose:
+        print('\tRendering frame %d: %s' % (frameNumber, ' '.join(rndrCmd)))
+    
+    startFrameTime = time.time()
+    success, stdout, stderr = runCmdWithOutput(rndrCmd, False)
+    elapsed = time.time() - startFrameTime
+    
+    if not success:
+        print('\tFrame %d FAILED' % frameNumber)
+        return (frameNumber, False, outputFile, elapsed)
+    
+    # Extract MCRT time if requested
+    mcrt_time = None
+    if show_mcrt and apply_text:
+        # Parse moonray output for "Mcrt time" - check both stdout and stderr
+        output = stdout.decode('utf-8') if isinstance(stdout, bytes) else stdout
+        output += stderr.decode('utf-8') if isinstance(stderr, bytes) else stderr
+        
+        if verbose:
+            print('\tSearching for MCRT time in moonray output...')
+        
+        for line in output.split('\n'):
+            if 'Mcrt time' in line:
+                # Extract the time portion after the equals sign
+                parts = line.split('=')
+                if len(parts) > 1:
+                    mcrt_time = parts[1].strip()
+                    if verbose:
+                        print('\tFound MCRT time: %s' % mcrt_time)
+                break
+        
+        if not mcrt_time and verbose:
+            print('\tMCRT time not found in output')
+    
+    # Apply text overlay if requested
+    if apply_text:
+        success = apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time, 
+                                     show_frame_number, show_parameter)
+        if not success:
+            print('\tFrame %d text overlay FAILED' % frameNumber)
+            return (frameNumber, False, outputFile, elapsed)
+    
+    print('\tFrame %d complete (%.2f seconds) %sWrote:%s %s' % 
+          (frameNumber, elapsed, bcolors.OKGREEN, bcolors.ENDC, outputFile))
+    return (frameNumber, True, outputFile, elapsed)
+
+def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None, 
+                       show_frame_number=False, show_parameter=True):
+    """Apply text overlay to a rendered frame"""
+    (workDir, numFrames, pingpong, power, textcolor, textsize, verbose, textposition,
+     parameterName, wedgeMin0, wedgeMax0, wedgeMin1, wedgeMax1, wedgeMin2, wedgeMax2,
+     multiType, additionalParams, wedge_value, wedge_label) = text_params
+    
+    tmpOutputFile = '%s/tmp_text_overlay_%04d.exr' % (workDir, frameNumber)
+    
+    # Calculate the end frame for animation based on pingpong mode
+    if pingpong:
+        endFrame = numFrames
+    else:
+        endFrame = numFrames - 1
+    
+    # Calculate wedge values (only for parameter animation mode)
+    wedgeVal0 = None
+    wedgeVal1 = None
+    wedgeVal2 = None
+    value = None
+    
+    if parameterName is not None:
+        # Parameter animation mode - calculate parameter values
+        if wedgeMin0 is not None and wedgeMax0 is not None:
+            wedgeVal0 = animate(0, endFrame, wedgeMin0, wedgeMax0, frameNumber, power, pingpong)
+            wedgeVal0 = '%.04f' % wedgeVal0
+        
+        if wedgeMin1 is not None and wedgeMax1 is not None:
+            wedgeVal1 = animate(0, endFrame, wedgeMin1, wedgeMax1, frameNumber, power, pingpong)
+            wedgeVal1 = '%.04f' % wedgeVal1
+        
+        if wedgeMin2 is not None and wedgeMax2 is not None:
+            wedgeVal2 = animate(0, endFrame, wedgeMin2, wedgeMax2, frameNumber, power, pingpong)
+            wedgeVal2 = '%.04f' % wedgeVal2
+        
+        # Format the value
+        if wedgeVal0 is not None and wedgeVal1 is not None and wedgeVal2 is not None:
+            value = '%s(%s, %s, %s)' % (multiType, wedgeVal0, wedgeVal1, wedgeVal2)
+        elif wedgeVal0 is not None and wedgeVal1 is not None:
+            value = '%s(%s, %s)' % (multiType, wedgeVal0, wedgeVal1)
+        else:
+            value = '%s' % wedgeVal0
+    
+    # Apply MCRT time text first if available
+    vertOffset = 0
+    currentInput = outputFile
+    if mcrt_time:
+        if not overlayTextCmd(currentInput, textcolor, textsize, 'Mcrt time', mcrt_time,
+                             vertOffset, verbose, textposition, tmpOutputFile):
+            return False
+        vertOffset += (textsize * 1.5)
+        currentInput = tmpOutputFile
+    
+    # Apply frame number if requested
+    if show_frame_number:
+        if not overlayTextCmd(currentInput, textcolor, textsize, 'Frame', str(frameNumber),
+                             vertOffset, verbose, textposition, tmpOutputFile):
+            return False
+        vertOffset += (textsize * 1.5)
+        currentInput = tmpOutputFile
+    
+    # Apply wedge label if in generic wedge mode and label is provided
+    if wedge_label:
+        wedge_display = '%.2f' % wedge_value
+        if not overlayTextCmd(currentInput, textcolor, textsize, wedge_label, wedge_display,
+                             vertOffset, verbose, textposition, tmpOutputFile):
+            return False
+        vertOffset += (textsize * 1.5)
+        currentInput = tmpOutputFile
+    
+    # Apply main parameter text (only if show_parameter is True and we have a parameter name)
+    if show_parameter and parameterName:
+        if not overlayTextCmd(currentInput, textcolor, textsize, parameterName, value,
+                             vertOffset, verbose, textposition, tmpOutputFile):
+            return False
+        vertOffset += (textsize * 1.5)
+        currentInput = tmpOutputFile
+    
+    # Apply additional parameter text (only if show_parameter is True)
+    if show_parameter:
+        for k, v in additionalParams.items():
+            if not overlayTextCmd(currentInput, textcolor, textsize, k, v,
+                                 vertOffset, verbose, textposition, tmpOutputFile):
+                return False
+            vertOffset += (textsize * 1.5)
+            currentInput = tmpOutputFile
+    
+    # Only copy back if we actually wrote something
+    if currentInput != outputFile:
+        shutil.copy(tmpOutputFile, outputFile)
+        os.remove(tmpOutputFile)
+    
+    return True
+
+class RdlaWedge:
+    def parseCommandLine(self):
+        """ Parse the command line """
+
+        for i, arg in enumerate(sys.argv):
+            if (arg[0] == '-') and arg[1].isdigit(): sys.argv[i] = ' ' + arg
+
+        parser = OptionParser("usage: %prog [options] <rdla/rdlb file> [rdla/rdlb file2] [...] <frames> <output1> [output2] [...]\n\n" +
+                              "Note: Multiple rdla/rdlb files can be specified - later files override/extend earlier ones\n" +
+                              "      A global 'wedge' variable (0-1) is always injected via -rdla_set\n" +
+                              "      Use --animate-parameter to also animate a specific parameter (creates sidecar rdla file)\n" +
+                              "      Use 'out.*.ext' pattern for image sequence output (e.g., out.*.exr, frames.*.jpg)\n" +
+                              "      Multiple outputs can be specified (e.g., out.mp4 frames.*.jpg)")
+
+        parser.add_option("--overlay-parameter",
+                          action="store_true",
+                          dest="overlay_parameter",
+                          help="overlay the wedged parameter name and value on the images")
+
+        parser.add_option("--overlay-mcrt",
+                          action="store_true",
+                          dest="overlay_mcrt",
+                          help="overlay the MCRT render time on the images")
+
+        parser.add_option("--overlay-frame",
+                          action="store_true",
+                          dest="overlay_frame",
+                          help="overlay the frame number on the images")
+
+        parser.add_option("--overlay-additional-parameters",
+                          dest="overlay_additional_parameters",
+                          help="comma separated list of additional static parameters " +
+                               "to overlay as text (requires --overlay-parameter)")
+
+        parser.add_option("--power",
+                          type="float",
+                          default=1.0,
+                          help="power to apply to linear parameter interpolation " +
+                               "[default: %default]")
+
+        parser.add_option("--textsize",
+                          type="int",
+                          default=20,
+                          help="point size of the text. [default: %default]")
+
+        parser.add_option("--textcolor",
+                          default="white",
+                          help="name of the color to use for the text overlay " +
+                               "(i.e. white, red, black, etc.) [default=%default]")
+
+        parser.add_option("--textposition",
+                          default="bottom",
+                          help="position of the text overlay: 'top' or 'bottom' [default=%default]")
+
+        parser.add_option("--skiprender",
+                          action="store_true",
+                          help="Don't render, only convert to gif.  " +
+                               "Assumes images are present")
+
+        parser.add_option("--pingpong",
+                          action="store_true",
+                          help="Pingpong the animation (min->max->min) instead of linear (min->max)")
+
+        parser.add_option("--animate-parameter",
+                          dest="animate_parameter",
+                          help="Animate a specific parameter or scene variable: '<map/mtl/sv> <param> <min> <max>' " +
+                               "(e.g., 'MyMaterial roughness 0 1' or for a scene variable 'sv pixel_samples 1 16')")
+
+        parser.add_option("--inclusive",
+                          action="store_true",
+                          help="Make wedge range [0,1] instead of [0,1) (includes 1.0 on last frame)")
+
+        parser.add_option("--wedge-label",
+                          dest="wedge_label",
+                          help="Label for the wedge variable to display as text overlay")
+
+        parser.add_option("--exec_mode",
+                          type="choice",
+                          choices=["scalar", "vector", "xpu", "auto"],
+                          default="auto",
+                          help="Moonray execution mode: scalar, vector, xpu, or auto (default: auto)")
+
+        parser.add_option("--max-concurrent-jobs",
+                          type="int",
+                          default=16,
+                          help="Maximum number of parallel processes for GIF conversion [default: %default]")
+
+        parser.add_option("--no-clean",
+                          action="store_false",
+                          dest="clean",
+                          default=True,
+                          help="Don't clean the temp directory before starting (default is to clean)")
+
+        parser.add_option("-v", "--verbose",
+                          action="store_true",
+                          help="verbose output.  Print the commands being " +
+                               "run and timing information")
+
+        (self.mOptions, args) = parser.parse_args()
+        
+        # Parse rdla/rdlb files (one or more) - all arguments ending in .rdla or .rdlb
+        self.mSourceRdlaFiles = []
+        argIndex = 0
+        while argIndex < len(args) and (args[argIndex].endswith('.rdla') or args[argIndex].endswith('.rdlb')):
+            self.mSourceRdlaFiles.append(args[argIndex])
+            argIndex += 1
+        
+        if not self.mSourceRdlaFiles:
+            parser.error("at least one rdla/rdlb file must be specified (ending in .rdla or .rdlb)")
+            return
+        
+        # Parse frames and outputs (always required)
+        if len(args) - argIndex < 2:
+            parser.error("need at least: <rdla/rdlb files> <frames> <output1>")
+            return
+        
+        self.mNumFrames = int(args[argIndex])
+        rawOutputs = args[argIndex + 1:]
+        
+        # Parse --animate-parameter option if specified (for parameter animation mode)
+        if self.mOptions.animate_parameter:
+            # Parse: "<map/mtl/sv> <param> <min> <max>"
+            paramParts = self.mOptions.animate_parameter.split()
+            if len(paramParts) < 4:
+                parser.error("--animate-parameter requires: '<map/mtl/sv> <param> <min> <max>'")
+                return
+            
+            self.mMapOrMaterialName = paramParts[0]
+            self.mParameterName = paramParts[1]
+            minValues = paramParts[2]
+            maxValues = paramParts[3]
+            
+            # Parse min/max values (can be comma-separated for multi-component)
+            splitWedgeMinValue = minValues.split(',')
+            splitWedgeMaxValue = maxValues.split(',')
+            wedgeMinLen = len(splitWedgeMinValue)
+            wedgeMaxLen = len(splitWedgeMaxValue)
+
+            if wedgeMinLen != wedgeMaxLen:
+                parser.error("--animate-parameter: mismatch in number of min/max components")
+                return
+
+            self.mWedgeMinValue0 = None
+            self.mWedgeMaxValue0 = None
+            self.mWedgeMinValue1 = None
+            self.mWedgeMaxValue1 = None
+            self.mWedgeMinValue2 = None
+            self.mWedgeMaxValue2 = None
+
+            if wedgeMinLen >= 1:
+                self.mWedgeMinValue0 = float(splitWedgeMinValue[0])
+                self.mWedgeMaxValue0 = float(splitWedgeMaxValue[0])
+            if wedgeMinLen >= 2:
+                self.mWedgeMinValue1 = float(splitWedgeMinValue[1])
+                self.mWedgeMaxValue1 = float(splitWedgeMaxValue[1])
+            if wedgeMinLen >= 3:
+                self.mWedgeMinValue2 = float(splitWedgeMinValue[2])
+                self.mWedgeMaxValue2 = float(splitWedgeMaxValue[2])
+        else:
+            # Generic wedge mode (default) - no parameter animation
+            self.mMapOrMaterialName = None
+            self.mParameterName = None
+            self.mWedgeMinValue0 = 0.0
+            self.mWedgeMaxValue0 = 1.0
+            self.mWedgeMinValue1 = None
+            self.mWedgeMaxValue1 = None
+            self.mWedgeMinValue2 = None
+            self.mWedgeMaxValue2 = None
+        
+        # Detect and collapse shell-expanded glob patterns back into patterns
+        # If the shell expanded "foo.*.exr" into ["foo.0000.exr", "foo.0001.exr", ...],
+        # we want to collapse it back to "foo.*.exr"
+        import re
+        self.mOutputs = []
+        processed = set()
+        
+        for i, output in enumerate(rawOutputs):
+            if i in processed:
+                continue
+                
+            # Check if this output has a frame number pattern (e.g., .0000., .0001.)
+            match = re.match(r'(.*\.)(\d{4})(\..+)$', output)
+            if match:
+                prefix, frameNum, suffix = match.groups()
+                # Check if subsequent outputs are part of the same sequence
+                isSequence = False
+                for j in range(i + 1, len(rawOutputs)):
+                    if re.match(re.escape(prefix) + r'\d{4}' + re.escape(suffix) + '$', rawOutputs[j]):
+                        isSequence = True
+                        processed.add(j)
+                
+                if isSequence:
+                    # This is a shell-expanded sequence, collapse it back to a pattern
+                    pattern = prefix + '*' + suffix
+                    self.mOutputs.append(pattern)
+                else:
+                    # Just a single file with a number in it
+                    self.mOutputs.append(output)
+            else:
+                # No frame number, keep as-is
+                self.mOutputs.append(output)
+
+        # Split the --overlay-additional-parameters option and remove whitespace
+        self.mAdditionalText = None
+        if self.mOptions.overlay_additional_parameters:
+            tmpAdditionalText = self.mOptions.overlay_additional_parameters.split(',')
+            self.mAdditionalText = []
+            for at in tmpAdditionalText:
+                # Remove whitespace and add to the list
+                self.mAdditionalText.append(''.join(at.split()))
+
+        self.mAdditionalParameterValues = {}
+        self.mMultiType = None
+        self.mObjectType = None  # Will store the Material/Map type definition
+        self.mAllObjectParameters = {}  # Will store all parameters from the object
+
+    def setup(self):
+        """ Create temp dir for sidecar rdla file """
+
+        # Create temp working dir
+        self.workDir = '/tmp/rdla_wedge'
+        if self.mOptions.clean and os.path.exists(self.workDir):
+            shutil.rmtree(self.workDir)
+        if not os.path.exists(self.workDir):
+            os.makedirs(self.workDir)
+
+        # Create path for sidecar rdla file (will be created in createModifiedScene)
+        self.mSidecarRdlaFile = '%s/animation_override.rdla' % self.workDir
+
+    def formatValueAsRdla(self, value, type_name):
+        """Format a single API value as an rdla string."""
+        if value is None:
+            return None
+        
+        if type_name == 'Bool':
+            return 'true' if value else 'false'
+        elif type_name in ['Float', 'Double']:
+            return '%.6g' % value
+        elif type_name in ['Int', 'Long']:
+            return str(int(value))
+        elif type_name in ['Rgb', 'Rgba']:
+            return 'Rgb(%.6g, %.6g, %.6g)' % (value.r, value.g, value.b)
+        elif type_name == 'Vec2f' or type_name == 'Vec2d':
+            return 'Vec2(%.6g, %.6g)' % (value.x, value.y)
+        elif type_name == 'Vec3f' or type_name == 'Vec3d':
+            return 'Vec3(%.6g, %.6g, %.6g)' % (value.x, value.y, value.z)
+        elif type_name == 'String':
+            return '"%s"' % value
+        elif type_name == 'SceneObject':
+            # Scene object reference - format as ClassName("objectName")
+            if hasattr(value, 'getName') and hasattr(value, 'getSceneClass'):
+                return '%s("%s")' % (value.getSceneClass().getName(), value.getName())
+        
+        return None
+
+    def getDefaultValues(self, scene_context, class_name):
+        """Get default attribute values for a scene class as rdla strings."""
+        defaults = dict()
+        try:
+            temp_name = "_rdla_wedge_default_%s" % class_name
+            temp_obj = scene_context.createSceneObject(class_name, temp_name)
+            scene_class = temp_obj.getSceneClass()
+            
+            for attr_name in scene_class.getAttributeNames():
+                attr = scene_class.getAttribute(attr_name)
+                type_name = attr.getTypeName()
+                try:
+                    value = temp_obj.get(attr_name)
+                    formatted = self.formatValueAsRdla(value, type_name)
+                    if formatted is not None:
+                        defaults[attr_name] = formatted
+                except:
+                    pass
+        except:
+            pass
+        
+        return defaults
+
+    def createModifiedScene(self):
+        """ Create a sidecar rdla file with the animated parameter that overrides the input files """
+        
+        # Only create sidecar file if parameter animation mode is enabled
+        if not self.mOptions.animate_parameter:
+            printOkGreen('Generic wedge mode (default): global wedge variable will be injected via -rdla_set')
+            return
+        
+        # Verify all input files exist
+        for sourceFile in self.mSourceRdlaFiles:
+            if not os.path.exists(sourceFile):
+                printError('Input rdla/rdlb file does not exist: ', sourceFile)
+                sys.exit(1)
+        
+        # Use scene_rdl2 API to load the scene and find the parameter
+        foundParam = False
+        foundMapMaterial = False
+        
+        # Create scene context and load all classes
+        scene_context = scene_rdl2.SceneContext()
+        scene_context.setProxyModeEnabled(True)
+        scene_context.loadAllSceneClasses()
+        
+        # Load all source files (later files override earlier ones)
+        for sourceFile in self.mSourceRdlaFiles:
+            _, ext = os.path.splitext(sourceFile)
+            ext = ext.lower()
+            
+            try:
+                if ext == '.rdlb':
+                    reader = scene_rdl2.BinaryReader(scene_context)
+                else:
+                    reader = scene_rdl2.AsciiReader(scene_context)
+                reader.fromFile(sourceFile)
+            except Exception as e:
+                printError('Failed to load scene file: ', sourceFile, ' Error: ', str(e))
+                sys.exit(1)
+        
+        # Now find the object and parameter
+        if self.mMapOrMaterialName == 'sv':
+            # SceneVariables
+            try:
+                api_obj = scene_context.getSceneVariables()
+                foundMapMaterial = True
+                scene_class = api_obj.getSceneClass()
+                
+                # Get default values for SceneVariables to filter out default parameters
+                defaults = self.getDefaultValues(scene_context, 'SceneVariables')
+                
+                # Iterate through all attributes to find the parameter and collect info
+                for attr_name in scene_class.getAttributeNames():
+                    attr = scene_class.getAttribute(attr_name)
+                    type_name = attr.getTypeName()
+                    
+                    # Get the current value
+                    try:
+                        value = api_obj.get(attr_name)
+                        
+                        # Skip None values
+                        if value is None:
+                            continue
+                        
+                        # Format the value for storage
+                        param_value_str = self.formatValueAsRdla(value, type_name)
+                        
+                        # Only store if we successfully formatted the value
+                        if param_value_str is not None:
+                            # Check if this is the wedge parameter - always include it even if it matches default
+                            is_wedge_param = (attr_name == self.mParameterName)
+                            
+                            # Skip if value matches default (unless it's the wedge parameter)
+                            if not is_wedge_param:
+                                default_value = defaults.get(attr_name)
+                                if default_value is not None and param_value_str == default_value:
+                                    continue
+                            
+                            # Store all non-default parameters (and the wedge parameter)
+                            self.mAllObjectParameters[attr_name] = param_value_str
+                            
+                            # Check if this is the wedge parameter
+                            if is_wedge_param:
+                                foundParam = True
+                                # Check if it's a multi-component type
+                                if type_name in ['Rgb', 'Rgba']:
+                                    self.mMultiType = 'Rgb'
+                                elif type_name == 'Vec2f' or type_name == 'Vec2d':
+                                    self.mMultiType = 'Vec2'
+                                elif type_name == 'Vec3f' or type_name == 'Vec3d':
+                                    self.mMultiType = 'Vec3'
+                            
+                            # Check if this is in additional parameters list
+                            if self.mAdditionalText:
+                                for at in self.mAdditionalText:
+                                    if attr_name == at:
+                                        self.mAdditionalParameterValues[at] = param_value_str
+                    except:
+                        pass
+                        
+            except Exception as e:
+                printError('Could not load SceneVariables: ', str(e))
+                sys.exit(1)
+        else:
+            # Material or Map
+            try:
+                api_obj = scene_context.getSceneObject(self.mMapOrMaterialName)
+                if api_obj is None:
+                    printError('Could not find material/map: ', self.mMapOrMaterialName)
+                    sys.exit(1)
+                
+                foundMapMaterial = True
+                scene_class = api_obj.getSceneClass()
+                class_name = scene_class.getName()
+                
+                # Store the object type for sidecar file generation
+                # Format: ClassName("objectName") - e.g., DwaBaseMaterial("myMaterial")
+                self.mObjectType = '%s("%s")' % (class_name, self.mMapOrMaterialName)
+                
+                # Get default values for this class to filter out default parameters
+                defaults = self.getDefaultValues(scene_context, class_name)
+                
+                # Iterate through all attributes to find the parameter and collect info
+                for attr_name in scene_class.getAttributeNames():
+                    attr = scene_class.getAttribute(attr_name)
+                    type_name = attr.getTypeName()
+                    
+                    # Get the current value
+                    try:
+                        value = api_obj.get(attr_name)
+                        
+                        # Skip None values
+                        if value is None:
+                            continue
+                        
+                        # Format the value for storage
+                        param_value_str = self.formatValueAsRdla(value, type_name)
+                        
+                        # Only store if we successfully formatted the value
+                        if param_value_str is not None:
+                            # Check if this is the wedge parameter - always include it even if it matches default
+                            is_wedge_param = (attr_name == self.mParameterName)
+                            
+                            # Skip if value matches default (unless it's the wedge parameter)
+                            if not is_wedge_param:
+                                default_value = defaults.get(attr_name)
+                                if default_value is not None and param_value_str == default_value:
+                                    continue
+                            
+                            # Store all non-default parameters (and the wedge parameter)
+                            self.mAllObjectParameters[attr_name] = param_value_str
+                            
+                            # Check if this is the wedge parameter
+                            if is_wedge_param:
+                                foundParam = True
+                                # Check if it's a multi-component type
+                                if type_name in ['Rgb', 'Rgba']:
+                                    self.mMultiType = 'Rgb'
+                                elif type_name == 'Vec2f' or type_name == 'Vec2d':
+                                    self.mMultiType = 'Vec2'
+                                elif type_name == 'Vec3f' or type_name == 'Vec3d':
+                                    self.mMultiType = 'Vec3'
+                            
+                            # Check if this is in additional parameters list
+                            if self.mAdditionalText:
+                                for at in self.mAdditionalText:
+                                    if attr_name == at:
+                                        self.mAdditionalParameterValues[at] = param_value_str
+                    except:
+                        pass
+                        
+            except Exception as e:
+                printError('Could not load material/map: ', self.mMapOrMaterialName, ' Error: ', str(e))
+                sys.exit(1)
+        
+        if not foundParam:
+            if self.mMapOrMaterialName == 'sv':
+                printError('Could not find parameter: ',
+                           self.mParameterName,
+                           bcolors.FAIL + ' in SceneVariables' + bcolors.ENDC)
+            else:
+                printError('Could not find parameter: ',
+                           self.mParameterName,
+                           bcolors.FAIL + ' on map/mtl ' + bcolors.ENDC,
+                           self.mMapOrMaterialName)
+            sys.exit(1)
+
+        if not foundMapMaterial:
+            if self.mMapOrMaterialName == 'sv':
+                printError('Could not find SceneVariables object')
+            else:
+                printError('Could not find material/map: ', self.mMapOrMaterialName)
+            sys.exit(1)
+        
+        # Now create the sidecar rdla file with the animation
+        self.createSidecarFile()
+    
+    def createSidecarFile(self):
+        """Create a sidecar rdla file that overrides the animated parameter"""
+        
+        sidecarContents = []
+        
+        # No Lua functions needed - we use the wedge variable directly
+        sidecarContents.append('-- Sidecar file for wedge animation')
+        sidecarContents.append('-- Uses the "wedge" variable (0-1 with power curve applied)')
+        sidecarContents.append('')
+        
+        # Create object definition with animated parameter (without variable assignment)
+        if self.mMapOrMaterialName == 'sv':
+            # SceneVariables override
+            sidecarContents.append('SceneVariables() {')
+        else:
+            # Material or Map override
+            if self.mObjectType:
+                sidecarContents.append('%s {' % self.mObjectType)
+            else:
+                printError('Could not determine object type for: ', self.mMapOrMaterialName)
+                sys.exit(1)
+        
+        # Add all existing parameters from the object (except the one being animated)
+        for paramName, paramValue in sorted(self.mAllObjectParameters.items()):
+            if paramName == self.mParameterName:
+                # Skip the animated parameter for now, will add it below
+                continue
+            sidecarContents.append('    ["%s"] = %s,' % (paramName, paramValue))
+        
+        # Add animated parameter using simple interpolation with wedge variable
+        # wedge is already normalized [0,1] with power curve applied
+        # Formula: minVal + wedge * (maxVal - minVal)
+        
+        def makeWedgeExpression(minVal, maxVal):
+            """Generate a simplified wedge expression: minVal + wedge * (maxVal - minVal)"""
+            range_val = maxVal - minVal
+            
+            # Simplify common cases
+            if minVal == 0 and range_val == 1:
+                return 'wedge'
+            elif minVal == 0:
+                return '(wedge * %g)' % range_val
+            elif range_val == 0:
+                return '%g' % minVal
+            else:
+                return '(%g + wedge * %g)' % (minVal, range_val)
+        
+        if self.mMultiType:
+            # Multi-component parameter (Vec2, Vec3, Rgb)
+            animStr0 = None
+            animStr1 = None
+            animStr2 = None
+            
+            if self.mWedgeMinValue0 is not None and self.mWedgeMaxValue0 is not None:
+                animStr0 = makeWedgeExpression(self.mWedgeMinValue0, self.mWedgeMaxValue0)
+            
+            if self.mWedgeMinValue1 is not None and self.mWedgeMaxValue1 is not None:
+                animStr1 = makeWedgeExpression(self.mWedgeMinValue1, self.mWedgeMaxValue1)
+            
+            if self.mWedgeMinValue2 is not None and self.mWedgeMaxValue2 is not None:
+                animStr2 = makeWedgeExpression(self.mWedgeMinValue2, self.mWedgeMaxValue2)
+            
+            # Parameter with three components (i.e. Vec3, Rgb)
+            if animStr0 and animStr1 and animStr2:
+                sidecarContents.append('    ["%s"] = %s(%s, %s, %s),' % (
+                    self.mParameterName,
+                    self.mMultiType,
+                    animStr0,
+                    animStr1,
+                    animStr2))
+            # Parameter with two components (i.e. Vec2)
+            elif animStr0 and animStr1:
+                sidecarContents.append('    ["%s"] = %s(%s, %s),' % (
+                    self.mParameterName,
+                    self.mMultiType,
+                    animStr0,
+                    animStr1))
+        else:
+            # Single component parameter
+            wedgeExpr = makeWedgeExpression(self.mWedgeMinValue0, self.mWedgeMaxValue0)
+            sidecarContents.append('    ["%s"] = %s,' % (self.mParameterName, wedgeExpr))
+        
+        sidecarContents.append('}')
+        sidecarContents.append('')
+        
+        # Write the sidecar file
+        with open(self.mSidecarRdlaFile, 'w') as f:
+            for line in sidecarContents:
+                f.write(line)
+                f.write('\n')
+        
+        printOkGreen('Wrote sidecar rdla: ', self.mSidecarRdlaFile)
+        if len(self.mSourceRdlaFiles) > 1:
+            printOkBlue('Using %d input files + sidecar (later files override earlier ones)' % len(self.mSourceRdlaFiles))
+
+    def overlayText(self, frameNumber, inputFile, outputFile):
+        """ Add text overlay to rendered images """
+
+        value = None
+        tmpOutputFile = '%s/tmp_text_overlay.exr' % self.workDir
+
+        wedgeVal0 = None
+        wedgeVal1 = None
+        wedgeVal2 = None
+
+        # Calculate the end frame for animation based on pingpong mode
+        if self.mOptions.pingpong:
+            endFrame = self.mNumFrames
+        else:
+            endFrame = self.mNumFrames - 1
+
+        if self.mWedgeMinValue0 is not None and \
+           self.mWedgeMaxValue0 is not None:
+            wedgeVal0 = animate(0,
+                                endFrame,
+                                self.mWedgeMinValue0,
+                                self.mWedgeMaxValue0,
+                                frameNumber,
+                                self.mOptions.power,
+                                self.mOptions.pingpong)
+            wedgeVal0 = '%.04f' % wedgeVal0
+
+        if self.mWedgeMinValue1 is not None and \
+           self.mWedgeMaxValue1 is not None:
+            wedgeVal1 = animate(0,
+                                endFrame,
+                                self.mWedgeMinValue1,
+                                self.mWedgeMaxValue1,
+                                frameNumber,
+                                self.mOptions.power,
+                                self.mOptions.pingpong)
+            wedgeVal1 = '%.04f' % wedgeVal1
+
+        if self.mWedgeMinValue2 is not None and \
+           self.mWedgeMaxValue2 is not None:
+            wedgeVal2 = animate(0,
+                                endFrame,
+                                self.mWedgeMinValue2,
+                                self.mWedgeMaxValue2,
+                                frameNumber,
+                                self.mOptions.power,
+                                self.mOptions.pingpong)
+            wedgeVal2 = '%.04f' % wedgeVal2
+
+
+        if wedgeVal0 is not None and \
+           wedgeVal1 is not None and \
+           wedgeVal2 is not None:
+            value = '%s(%s, %s, %s)' % (self.mMultiType,
+                                        wedgeVal0,
+                                        wedgeVal1,
+                                        wedgeVal2)
+        elif wedgeVal0 is not None and \
+             wedgeVal1 is not None:
+
+            value = '%s(%s, %s)' % (self.mMultiType,
+                                    wedgeVal0,
+                                    wedgeVal1)
+        else:
+            value = '%s' % wedgeVal0
+
+        printOkBlue('\tAdding text with wedge value: ',
+                    '%s=%s' % (self.mParameterName, value))
+
+        vertOffset = 0
+        overlayTextCmd(inputFile,
+                       self.mOptions.textcolor,
+                       self.mOptions.textsize,
+                       self.mParameterName,
+                       value,
+                       vertOffset,
+                       self.mOptions.verbose,
+                       self.mOptions.textposition,
+                       tmpOutputFile)
+
+        for k in self.mAdditionalParameterValues.keys():
+            vertOffset += (self.mOptions.textsize * 1.5)
+            overlayTextCmd(tmpOutputFile,
+                           self.mOptions.textcolor,
+                           self.mOptions.textsize,
+                           k,
+                           self.mAdditionalParameterValues[k],
+                           vertOffset,
+                           self.mOptions.verbose,
+                           self.mOptions.textposition,
+                           tmpOutputFile)
+
+        shutil.copy(tmpOutputFile, outputFile)
+
+        printOkGreen('\t\tWrote: ', outputFile)
+
+    def renderScene(self):
+        """ Render the scene over the specified duration and add the text overlay"""
+        if self.mOptions.skiprender:
+            printOkGreen('Skipping rendering')
+            return
+        
+        # Verify all input files exist before rendering
+        for sourceFile in self.mSourceRdlaFiles:
+            if not os.path.exists(sourceFile):
+                printError('Input rdla/rdlb file does not exist: ', sourceFile)
+                sys.exit(1)
+        
+        # In parameter animation mode, verify sidecar file was created
+        if self.mOptions.animate_parameter:
+            if not os.path.exists(self.mSidecarRdlaFile):
+                printError('Sidecar rdla file was not created: ', self.mSidecarRdlaFile)
+                sys.exit(1)
+
+        medianFrameNumber = int(self.mNumFrames / 2)
+        startAllRenderTime = time.time()
+        
+        # Determine which frames need to be rendered (not copied in pingpong mode)
+        frames_to_render = []
+        if self.mOptions.pingpong:
+            # Only render up to median frame, rest will be copied
+            frames_to_render = range(medianFrameNumber + 1)
+        else:
+            frames_to_render = range(self.mNumFrames)
+        
+        # Prepare rendering tasks
+        render_tasks = []
+        for frameNumber in frames_to_render:
+            outputFile = '%s/out.%04d.exr' % (self.workDir, frameNumber)
+            
+            # Calculate wedge value - always calculated since we always inject it
+            # Calculate wedge value [0,1) or [0,1]
+            if self.mOptions.inclusive:
+                # [0,1] - divide by (num_frames - 1) so the last frame reaches 1.0
+                if self.mNumFrames > 1:
+                    wedge_value = float(frameNumber) / float(self.mNumFrames - 1)
+                else:
+                    wedge_value = 0.0
+            else:
+                # [0,1) - divide by num_frames so the last frame stays below 1.0
+                wedge_value = float(frameNumber) / float(self.mNumFrames)
+            
+            # Apply power curve
+            wedge_value = pow(wedge_value, self.mOptions.power)
+            
+            # Prepare text overlay parameters if needed (if any text option is enabled)
+            text_params = None
+            apply_text_overlay = self.mOptions.overlay_parameter or self.mOptions.overlay_mcrt or self.mOptions.overlay_frame or self.mOptions.wedge_label
+            if apply_text_overlay:
+                text_params = (self.workDir, self.mNumFrames, self.mOptions.pingpong,
+                             self.mOptions.power, self.mOptions.textcolor, self.mOptions.textsize,
+                             self.mOptions.verbose, self.mOptions.textposition, self.mParameterName,
+                             self.mWedgeMinValue0, self.mWedgeMaxValue0,
+                             self.mWedgeMinValue1, self.mWedgeMaxValue1,
+                             self.mWedgeMinValue2, self.mWedgeMaxValue2,
+                             self.mMultiType, self.mAdditionalParameterValues,
+                             wedge_value, self.mOptions.wedge_label)
+            
+            # Build list of input files
+            if self.mOptions.animate_parameter:
+                # Parameter animation mode: original files + sidecar
+                inputFiles = self.mSourceRdlaFiles + [self.mSidecarRdlaFile]
+            else:
+                # Generic wedge mode: use original files only
+                inputFiles = self.mSourceRdlaFiles
+            
+            render_tasks.append((frameNumber, inputFiles, outputFile, 
+                               self.mOptions.exec_mode, self.mOptions.verbose,
+                               apply_text_overlay, text_params, self.mOptions.overlay_mcrt,
+                               self.mOptions.overlay_frame, self.mOptions.overlay_parameter,
+                               bool(self.mOptions.animate_parameter), wedge_value))
+        
+        # Render frames in parallel
+        num_processes = min(self.mOptions.max_concurrent_jobs, multiprocessing.cpu_count())
+        printOkBlue('Rendering frames...')
+        with multiprocessing.Pool(processes=num_processes) as pool:
+            results = pool.map(render_single_frame, render_tasks)
+        
+        printOkGreen('Rendering complete.')
+        
+        # Check if any renders failed
+        failed_frames = [r[0] for r in results if not r[1]]
+        if failed_frames:
+            printError('Frame rendering failed for frames: ', ', '.join(map(str, failed_frames)))
+            return
+        
+        # Handle pingpong frame copying
+        if self.mOptions.pingpong:
+            printOkBlue('Copying frames for pingpong...')
+            for frameNumber in range(medianFrameNumber + 1, self.mNumFrames):
+                sourceFrameNumber = medianFrameNumber - (frameNumber - medianFrameNumber)
+                sourceFile = '%s/out.%04d.exr' % (self.workDir, sourceFrameNumber)
+                outputFile = '%s/out.%04d.exr' % (self.workDir, frameNumber)
+                
+                shutil.copy(sourceFile, outputFile)
+                if self.mOptions.verbose:
+                    printOkGreen('\tCopied frame %d to %d' % (sourceFrameNumber, frameNumber))
+
+        if self.mOptions.verbose:
+            print('Total render time: %.2f seconds' % (time.time() - startAllRenderTime))
+        print(' ')
+
+    def processOutputs(self):
+        """ Convert rendered frames to an animated gif, mp4, or image sequence"""
+        startProcessOutputsTime = time.time()
+        
+        # Always use temp directory as source for conversions to avoid issues
+        # with output files being picked up on subsequent runs
+        outputImages = '%s/out.*.exr' % self.workDir
+
+        # Process each output target
+        for outputTarget in self.mOutputs:
+            self.convertSingleOutput(outputTarget, outputImages)
+
+        if self.mOptions.verbose:
+            print('\tConvert time: %.2f seconds' %
+                (time.time() - startProcessOutputsTime))
+
+    def convertSingleOutput(self, outputTarget, outputImages):
+        """ Convert rendered frames to a single output target """
+        import glob
+        
+        # Check if output is an image sequence (contains *)
+        isImageSequence = '*' in outputTarget
+
+        if isImageSequence:
+            # Handle image sequence output
+            printOkBlue('Converting to image sequence: %s' % outputTarget)
+            
+            imageFiles = sorted(glob.glob(outputImages))
+            if not imageFiles:
+                printError('No images found matching: ', outputImages)
+                return
+            
+            # Parse the output pattern to get directory, base, and extension
+            outputPattern = outputTarget
+            outputDir = os.path.dirname(outputPattern)
+            outputBase = os.path.basename(outputPattern)
+            
+            # Create output directory if it doesn't exist
+            if outputDir and not os.path.exists(outputDir):
+                os.makedirs(outputDir)
+            
+            # Extract the extension from the pattern
+            outputExt = os.path.splitext(outputBase)[1].lower()
+            
+            # Replace * with frame number pattern
+            outputBase = outputBase.replace('*', '%04d')
+            
+            for i, imgFile in enumerate(imageFiles):
+                if outputDir:
+                    outputFile = os.path.join(outputDir, outputBase % i)
+                else:
+                    outputFile = outputBase % i
+                
+                # Remove existing output file to prevent ImageMagick from creating numbered variants
+                if os.path.exists(outputFile):
+                    os.remove(outputFile)
+                
+                if outputExt == '.exr':
+                    # Just copy the file
+                    shutil.copy(imgFile, outputFile)
+                    if self.mOptions.verbose:
+                        printOkGreen('\tCopied: ', imgFile, ' to ', outputFile)
+                else:
+                    # Convert to the target format using oiiotool
+                    convertCmd = ['oiiotool',
+                                 '-i', imgFile,
+                                 '--iscolorspace', 'linear',
+                                 '--tocolorspace', 'sRGB',
+                                 '-o', outputFile]
+                    
+                    if self.mOptions.verbose:
+                        print('\t' + ' '.join(convertCmd))
+                    
+                    if not runCmd(convertCmd, False):
+                        return
+                    
+                    if self.mOptions.verbose:
+                        printOkGreen('\tConverted: ', imgFile, ' to ', outputFile)
+            
+            printOkGreen('Wrote image sequence: ', outputPattern)
+            
+        else:
+            # Get list of source images for both MP4 and GIF
+            imageFiles = sorted(glob.glob(outputImages))
+            if not imageFiles:
+                printError('No images found matching: ', outputImages)
+                return
+            
+            # Check if output is mp4 or gif
+            outputExt = os.path.splitext(outputTarget)[1].lower()
+            isMP4 = outputExt == '.mp4'
+            
+            if isMP4:
+                printOkBlue('Converting to mp4: %s' % outputTarget)
+            else:
+                printOkBlue('Converting to gif: %s' % outputTarget)
+
+            if isMP4:
+                # Use oiiotool to composite over black and convert to PNG, then ffmpeg for MP4
+                # Get the base pattern for the image files
+                exrPattern = '%s/out.%%04d.exr' % self.workDir
+                
+                # Create temp directory for PNG conversions
+                tmpPngDir = os.path.join(self.workDir, 'png_frames')
+                if not os.path.exists(tmpPngDir):
+                    os.makedirs(tmpPngDir)
+                
+                # Convert each EXR to PNG with proper alpha handling (in parallel)
+                printOkBlue('Converting frames for MP4...')
+                
+                # Prepare conversion tasks
+                conversion_tasks = []
+                for imgFile in imageFiles:
+                    frameNum = int(imgFile.split('.')[-2])
+                    pngFile = os.path.join(tmpPngDir, 'frame_%04d.png' % frameNum)
+                    conversion_tasks.append((imgFile, pngFile, self.mOptions.verbose))
+                
+                # Run conversions in parallel
+                num_processes = min(self.mOptions.max_concurrent_jobs, multiprocessing.cpu_count())
+                with multiprocessing.Pool(processes=num_processes) as pool:
+                    results = pool.map(convert_exr_to_png_with_alpha, conversion_tasks)
+                
+                # Check if any conversions failed
+                if not all(results):
+                    printError('One or more frame conversions failed')
+                    return
+                
+                # Now use ffmpeg to create the MP4 from PNG files
+                pngPattern = os.path.join(tmpPngDir, 'frame_%04d.png')
+                
+                convertCmd = ['ffmpeg',
+                             '-y',  # Overwrite output file
+                             '-framerate', '10',  # Input frame rate
+                             '-i', pngPattern,
+                             '-vf', 'format=yuv420p',
+                             '-c:v', 'libx264',
+                             '-crf', '18',  # High quality
+                             outputTarget]
+            else:
+                # Use oiiotool to composite over black and convert to PNG, then ffmpeg for GIF
+                # Get the base pattern for the image files
+                exrPattern = '%s/out.%%04d.exr' % self.workDir
+                
+                # Create temp directory for PNG conversions
+                tmpPngDir = os.path.join(self.workDir, 'png_frames')
+                if not os.path.exists(tmpPngDir):
+                    os.makedirs(tmpPngDir)
+                
+                # Convert each EXR to PNG with proper alpha handling (in parallel)
+                printOkBlue('Converting frames with alpha handling...')
+                
+                # Prepare conversion tasks
+                conversion_tasks = []
+                for imgFile in imageFiles:
+                    frameNum = int(imgFile.split('.')[-2])
+                    pngFile = os.path.join(tmpPngDir, 'frame_%04d.png' % frameNum)
+                    conversion_tasks.append((imgFile, pngFile, self.mOptions.verbose))
+                
+                # Run conversions in parallel (limit processes to avoid resource exhaustion)
+                num_processes = min(self.mOptions.max_concurrent_jobs, multiprocessing.cpu_count())
+                with multiprocessing.Pool(processes=num_processes) as pool:
+                    results = pool.map(convert_exr_to_png_with_alpha, conversion_tasks)
+                
+                # Check if any conversions failed
+                if not all(results):
+                    printError('One or more frame conversions failed')
+                    return
+                
+                # Now use ffmpeg to create the GIF from PNG files with palette generation
+                pngPattern = os.path.join(tmpPngDir, 'frame_%04d.png')
+                
+                # First pass: generate palette
+                paletteFile = os.path.join(self.workDir, 'palette.png')
+                paletteCmdCmd = ['ffmpeg',
+                                '-y',
+                                '-framerate', '10',
+                                '-i', pngPattern,
+                                '-vf', 'palettegen=max_colors=256:stats_mode=diff',
+                                paletteFile]
+                
+                if self.mOptions.verbose:
+                    print('\tGenerating palette...')
+                    print('\t' + ' '.join(paletteCmdCmd))
+                
+                if not runCmd(paletteCmdCmd, False):
+                    return
+                
+                # Second pass: use palette to create GIF
+                convertCmd = ['ffmpeg',
+                             '-y',
+                             '-framerate', '10',
+                             '-i', pngPattern,
+                             '-i', paletteFile,
+                             '-lavfi', '[0:v][1:v]paletteuse=dither=bayer:bayer_scale=5',
+                             outputTarget]
+
+            if self.mOptions.verbose:
+                print('\t' + ' '.join(convertCmd))
+
+            if not runCmd(convertCmd, False):
+                return
+
+            printOkGreen('Wrote: ', outputTarget)
+
+    def main(self):
+        startTime = time.time()
+
+        self.parseCommandLine()
+        self.setup()
+        self.createModifiedScene()
+        self.renderScene()
+        self.processOutputs()
+
+        totalTime = time.time() - startTime
+        print('')
+        printOkGreen('Total time: %.2f seconds (%.2f minutes)' % (totalTime, totalTime / 60.0))
+ 
+if __name__ == '__main__':
+    RdlaWedge().main()

@@ -3,4 +3,5 @@
 
 add_subdirectory("rdla_filter")
 add_subdirectory("rdla_gui")
+add_subdirectory("rdla_wedge")
 

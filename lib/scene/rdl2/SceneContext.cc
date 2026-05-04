@@ -479,6 +479,71 @@ SceneContext::createSceneObject(const std::string& className,
 }
 
 void
+SceneContext::deleteSceneObject(const std::string& objectName)
+{
+    if (objectName.empty()) {
+        throw except::ValueError("Cannot delete a SceneObject with an empty object name.");
+    }
+
+    // Prevent deleting the SceneVariables singleton.
+    if (objectName == "__SceneVariables__") {
+        throw except::ValueError("Cannot delete the SceneVariables object.");
+    }
+
+    // Acquire exclusive access to the object entry.
+    SceneObjectMap::accessor writer;
+    if (!mSceneObjects.find(writer, objectName)) {
+        std::stringstream errMsg;
+        errMsg << "No SceneObject named '" << objectName << "' in the SceneContext.";
+        throw except::KeyError(errMsg.str());
+    }
+
+    SceneObject* obj = writer->second;
+
+    // Call any on-delete callbacks.
+    for (auto cb : mDeleteCallbacks) {
+        cb(obj);
+    }
+
+    // Remove from type-specific vectors.
+    {
+        std::lock_guard lock(mCreateSceneObjectMutex);
+        if (obj->isA<Geometry>()) {
+            auto it = std::find(mGeometries.begin(), mGeometries.end(), obj->asA<Geometry>());
+            if (it != mGeometries.end()) {
+                mGeometries.erase(it);
+            }
+        } else if (obj->isA<GeometrySet>()) {
+            auto it = std::find(mGeometrySets.begin(), mGeometrySets.end(), obj->asA<GeometrySet>());
+            if (it != mGeometrySets.end()) {
+                mGeometrySets.erase(it);
+            }
+        } else if (obj->isA<Camera>()) {
+            auto it = std::find(mCameras.begin(), mCameras.end(), obj->asA<Camera>());
+            if (it != mCameras.end()) {
+                mCameras.erase(it);
+            }
+        } else if (obj->isA<RenderOutput>()) {
+            auto roPtr = static_cast<const RenderOutput*>(obj->asA<RenderOutput>());
+            auto it = std::find(mRenderOutputs.begin(), mRenderOutputs.end(), roPtr);
+            if (it != mRenderOutputs.end()) {
+                mRenderOutputs.erase(it);
+            }
+        }
+    }
+
+    // Unload procedural if this is a Geometry object.
+    Geometry* pGeom = dynamic_cast<Geometry*>(obj);
+    if (pGeom) {
+        pGeom->unloadProcedural();
+    }
+
+    // Delete the object and erase from the map.
+    delete obj;
+    mSceneObjects.erase(writer);
+}
+
+void
 SceneContext::applyUpdates(Layer * const layer)
 {
     // Now that the scene variables and the camera are available, we can update the
