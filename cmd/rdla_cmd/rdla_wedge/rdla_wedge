@@ -213,8 +213,15 @@ def render_single_frame(args):
     elapsed = time.time() - startFrameTime
     
     if not success:
-        print('\tFrame %d FAILED' % frameNumber)
-        return (frameNumber, False, outputFile, elapsed)
+        # moonray may return non-zero when the scene's built-in output path fails
+        # but the -out target was still written successfully.  Check the file.
+        if os.path.exists(outputFile) and os.path.getsize(outputFile) > 0:
+            if verbose:
+                print('\tFrame %d: moonray exited non-zero but output file exists; treating as success' % frameNumber)
+            success = True
+        else:
+            print('\tFrame %d FAILED' % frameNumber)
+            return (frameNumber, False, outputFile, elapsed)
     
     # Extract MCRT time if requested
     mcrt_time = None
@@ -410,8 +417,10 @@ class RdlaWedge:
 
         parser.add_option("--animate-parameter",
                           dest="animate_parameter",
-                          help="Animate a specific parameter or scene variable: '<map/mtl/sv> <param> <min> <max>' " +
-                               "(e.g., 'MyMaterial roughness 0 1' or for a scene variable 'sv pixel_samples 1 16')")
+                          nargs=4,
+                          help="Animate a specific parameter or scene variable. " +
+                               "Pass four separate arguments: <map/mtl/sv> <param> <min> <max> " +
+                               "(e.g., --animate-parameter MyMaterial roughness 0 1)")
 
         parser.add_option("--inclusive",
                           action="store_true",
@@ -466,11 +475,8 @@ class RdlaWedge:
         
         # Parse --animate-parameter option if specified (for parameter animation mode)
         if self.mOptions.animate_parameter:
-            # Parse: "<map/mtl/sv> <param> <min> <max>"
-            paramParts = self.mOptions.animate_parameter.split()
-            if len(paramParts) < 4:
-                parser.error("--animate-parameter requires: '<map/mtl/sv> <param> <min> <max>'")
-                return
+            # animate_parameter is a 4-tuple: (map/mtl/sv, param, min, max)
+            paramParts = self.mOptions.animate_parameter
             
             self.mMapOrMaterialName = paramParts[0]
             self.mParameterName = paramParts[1]
@@ -1045,7 +1051,14 @@ class RdlaWedge:
             
             # Calculate wedge value - always calculated since we always inject it
             # Calculate wedge value [0,1) or [0,1]
-            if self.mOptions.inclusive:
+            if self.mOptions.pingpong:
+                # In pingpong mode only the first half is rendered; wedge must reach 1.0
+                # at the midpoint so the sidecar formula (min + wedge*(max-min)) hits maxVal.
+                if medianFrameNumber > 0:
+                    wedge_value = float(frameNumber) / float(medianFrameNumber)
+                else:
+                    wedge_value = 0.0
+            elif self.mOptions.inclusive:
                 # [0,1] - divide by (num_frames - 1) so the last frame reaches 1.0
                 if self.mNumFrames > 1:
                     wedge_value = float(frameNumber) / float(self.mNumFrames - 1)
@@ -1097,7 +1110,7 @@ class RdlaWedge:
         failed_frames = [r[0] for r in results if not r[1]]
         if failed_frames:
             printError('Frame rendering failed for frames: ', ', '.join(map(str, failed_frames)))
-            return
+            return False
         
         # Handle pingpong frame copying
         if self.mOptions.pingpong:
@@ -1114,6 +1127,7 @@ class RdlaWedge:
         if self.mOptions.verbose:
             print('Total render time: %.2f seconds' % (time.time() - startAllRenderTime))
         print(' ')
+        return True
 
     def processOutputs(self):
         """ Convert rendered frames to an animated gif, mp4, or image sequence"""
@@ -1325,8 +1339,8 @@ class RdlaWedge:
         self.parseCommandLine()
         self.setup()
         self.createModifiedScene()
-        self.renderScene()
-        self.processOutputs()
+        if self.renderScene() is not False:
+            self.processOutputs()
 
         totalTime = time.time() - startTime
         print('')

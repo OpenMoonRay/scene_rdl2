@@ -2187,7 +2187,24 @@ def _apply_control_to_object(scene_obj, control_name, control, control_type):
             print(f"Warning: Could not set Mat4d for {control_name}: {mat_error}")
             import traceback
             traceback.print_exc()
-    elif control_type in ["sceneobjectvector", "stringvector", "geometrylist", "layerlist", "lightlist"]:
+    elif control_type == "sceneobjectvector":
+        # Editable SceneObject vector - resolve names to objects and call set()
+        names = control.get()  # list of object names
+        obj_refs = []
+        for n in names:
+            try:
+                obj_refs.append(scene_obj.getSceneContext().getSceneObject(n))
+            except Exception:
+                # Fall back to global context (e.g. when called from outside a delta context)
+                try:
+                    obj_refs.append(scene_context.getSceneObject(n))
+                except Exception:
+                    pass  # skip names that cannot be resolved
+        try:
+            scene_obj.set(control_name, obj_refs)
+        except Exception as e:
+            print(f"Warning: Could not set SceneObjectVector for {control_name}: {e}")
+    elif control_type in ["stringvector", "geometrylist", "layerlist", "lightlist"]:
         # Read-only vector types - these are loaded from the scene context
         # and are not editable in the GUI, so skip them
         pass
@@ -5227,7 +5244,7 @@ def sync_control_values_to_specs():
                     metadata_dict = control_spec[3]
                     
                     # Skip read-only control types - they don't need syncing
-                    if control_type in ['sceneobject', 'sceneobjectvector', 'stringvector', 
+                    if control_type in ['sceneobject', 'stringvector',
                                        'geometrylist', 'layerlist', 'lightlist']:
                         continue
                     
@@ -7091,9 +7108,11 @@ def refresh_main_list():
             # Get current value from control_spec (this is the potentially modified value after sync)
             current_value = control_spec[2]
 
-            # intvector/floatvector/vec3fvector/vec2fvector are only shown when "show all parameters"
+            # floatvector/vec3fvector/vec2fvector are only shown when "show all parameters"
             # is active, unless the attribute has a non-default value (explicitly set in the scene).
-            if control_type in ("intvector", "floatvector", "vec3fvector", "vec2fvector") and not show_all_parameters:
+            # intvector is always shown (like sceneobjectvector) because users regularly need to
+            # set integer index lists such as ref_indices.
+            if control_type in ("floatvector", "vec3fvector", "vec2fvector") and not show_all_parameters:
                 _pdef = rdl2_print_dict.get(class_name, {}).get(control_name)
                 _default = _pdef.default if _pdef else None
                 # Normalise both sides to comparable lists
@@ -7674,72 +7693,244 @@ def refresh_main_list():
                 control.config(state='readonly')
             
             elif control_type == "sceneobjectvector":
-                # Scene object vector - list of scene object references
-                # Create read-only listbox for scene object list
-                listbox_frame = ttk.Frame(sub_frame)
+                # Editable scene object vector with Set / +Add / -Remove buttons
+                # and an object-picker dialog for selecting references.
+                outer_frame = ttk.Frame(sub_frame)
+                listbox_frame = ttk.Frame(outer_frame)
                 scrollbar = ttk.Scrollbar(listbox_frame, orient=tk.VERTICAL)
-                
-                # Convert wrapped objects to list if needed
+
+                # Normalise initial_value to a list of plain Python object names
                 if not initial_value:
                     initial_value = []
                 elif hasattr(initial_value, 'toList'):
-                    # Convert SceneObjectVector to list
                     initial_value = list(initial_value.toList())
                 elif not isinstance(initial_value, list):
-                    # Convert other iterables to list
                     initial_value = list(initial_value) if hasattr(initial_value, '__iter__') else []
-                
-                listbox = tk.Listbox(listbox_frame, 
-                                   yscrollcommand=scrollbar.set,
-                                   height=min(10, max(3, len(initial_value))),
-                                   bg=ENTRY_BG,
-                                   fg=ENTRY_FG,
-                                   selectbackground=SELECT_BG,
-                                   state='normal')  # Allow selection but not editing
+
+                _sov_names = []
+                for _sov_item in initial_value:
+                    if _sov_item:
+                        _sov_names.append(
+                            _sov_item.getName() if hasattr(_sov_item, 'getName') else str(_sov_item))
+
+                listbox = tk.Listbox(listbox_frame,
+                                     yscrollcommand=scrollbar.set,
+                                     height=min(10, max(3, len(_sov_names))),
+                                     bg=ENTRY_BG,
+                                     fg=ENTRY_FG,
+                                     selectbackground=SELECT_BG,
+                                     selectmode=tk.EXTENDED)
                 scrollbar.config(command=listbox.yview)
                 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
                 listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-                
-                # Populate listbox with object names
-                if initial_value:
-                    for obj_item in initial_value:
-                        if obj_item:  # Skip empty/None entries
-                            # Convert scene object to name if needed
-                            if hasattr(obj_item, 'getName'):
-                                item_name = obj_item.getName()
-                            else:
-                                item_name = str(obj_item)
-                            listbox.insert(tk.END, item_name)
-                
-                # Make it read-only by disabling key/mouse editing
-                listbox.bind('<Key>', lambda e: 'break')
-                listbox.bind('<Button-2>', lambda e: 'break')
-                listbox.bind('<Button-3>', lambda e: 'break')
-                
-                # Add double-click handler to navigate to selected object
+                listbox_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+
+                for _n in _sov_names:
+                    listbox.insert(tk.END, _n)
+
+                # Double-click navigates to the selected object
                 def on_sceneobjectvector_doubleclick(event):
                     selection = event.widget.curselection()
                     if selection:
-                        obj_name = event.widget.get(selection[0])
-                        scroll_to_object(obj_name)
+                        scroll_to_object(event.widget.get(selection[0]))
                 listbox.bind('<Double-Button-1>', on_sceneobjectvector_doubleclick)
-                
-                # Create a container control object that has get() method
+
                 class SceneObjectVectorControl:
-                    def __init__(self, obj_list):
-                        self.obj_list = obj_list
-                        self.initial_value = obj_list
-                    
+                    def __init__(self, name_list):
+                        self._names = list(name_list)
+                        self.initial_value = list(name_list)
+
                     def get(self):
-                        return self.obj_list
-                    
+                        return self._names
+
                     def is_dirty(self):
-                        return False  # Read-only, never dirty
-                
-                control = SceneObjectVectorControl(initial_value)
-                # Use the frame as the widget to grid
-                listbox_frame._control = control  # Store reference
-                actual_widget = listbox_frame
+                        return self._names != self.initial_value
+
+                control = SceneObjectVectorControl(_sov_names)
+
+                # Determine the interface type constraint for the attribute so the
+                # picker can filter to compatible objects (INTERFACE_GENERIC == 1
+                # means no filtering).
+                _sov_required_iface = 0
+                _sov_obj_key = (assignment, class_name, obj_name)
+                try:
+                    _sov_so = scene_objects.get(_sov_obj_key)
+                    if _sov_so:
+                        _sov_attr = _sov_so.getSceneClass().getAttribute(control_name)
+                        if _sov_attr:
+                            _sov_required_iface = int(_sov_attr.getObjectType())
+                except Exception:
+                    pass
+
+                # Closures capture these by reference
+                _sov_ctrl = control
+                _sov_lb   = listbox
+                _sov_cn   = control_name   # capture the current control name
+
+                def _sov_get_targets(_ri=_sov_required_iface, _self=obj_name):
+                    """Return sorted [(cls, name), ...] of all compatible scene objects."""
+                    targets = []
+                    all_targets = []
+                    for (asn, cls, name), _ in object_specs.items():
+                        if cls == 'SceneVariables' or not name:
+                            continue
+                        if name == _self:
+                            continue  # exclude self to prevent self-referencing
+                        all_targets.append((cls, name))
+                        if _ri > 1:
+                            cand = scene_objects.get((asn, cls, name))
+                            if cand is not None:
+                                try:
+                                    if not (int(cand.getType()) & _ri):
+                                        continue
+                                except Exception:
+                                    pass
+                        targets.append((cls, name))
+                    # Fall back to all objects if interface filtering removed everything
+                    result = targets if targets else all_targets
+                    result.sort(key=lambda t: (t[0].lower(), t[1].lower()))
+                    return result
+
+                def _sov_open_picker(multi_select, title):
+                    """Open object-picker dialog; return list of chosen names ([] on cancel)."""
+                    import tkinter.messagebox as messagebox
+                    targets = _sov_get_targets()
+                    if not targets:
+                        messagebox.showinfo("No Objects", "No scene objects found in the scene.")
+                        return []
+                    dlg = tk.Toplevel(root)
+                    dlg.title(title)
+                    dlg.transient(root)
+                    dlg.grab_set()
+                    dlg.resizable(True, True)
+                    dlg.configure(bg=BG_COLOR)
+
+                    flt_frame = ttk.Frame(dlg)
+                    flt_frame.pack(fill=tk.X, padx=10, pady=(10, 0))
+                    ttk.Label(flt_frame, text="Filter:").pack(side=tk.LEFT, padx=(0, 5))
+                    flt_var = tk.StringVar()
+                    flt_entry = ttk.Entry(flt_frame, textvariable=flt_var)
+                    flt_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+                    lst_frame = ttk.Frame(dlg)
+                    lst_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+                    lst_sb = ttk.Scrollbar(lst_frame)
+                    lst_sb.pack(side=tk.RIGHT, fill=tk.Y)
+                    sel_lb = tk.Listbox(lst_frame,
+                                        bg=ENTRY_BG, fg=ENTRY_FG,
+                                        selectbackground=SELECT_BG,
+                                        yscrollcommand=lst_sb.set,
+                                        selectmode=tk.EXTENDED if multi_select else tk.SINGLE,
+                                        font=('TkDefaultFont', 10))
+                    sel_lb.pack(fill=tk.BOTH, expand=True)
+                    lst_sb.config(command=sel_lb.yview)
+
+                    _disp = []   # parallel list of names matching listbox rows
+
+                    def _populate(pattern=''):
+                        sel_lb.delete(0, tk.END)
+                        _disp.clear()
+                        pat = pattern.lower()
+                        for cls, name in targets:
+                            if pat and pat not in name.lower() and pat not in cls.lower():
+                                continue
+                            sel_lb.insert(tk.END, f"{name}  ({cls})")
+                            _disp.append(name)
+
+                    _populate()
+                    flt_var.trace_add('write', lambda *_: _populate(flt_var.get()))
+                    flt_entry.focus_set()
+
+                    result = {'names': []}
+
+                    def _on_ok(_event=None):
+                        result['names'] = [_disp[i] for i in sel_lb.curselection()]
+                        dlg.destroy()
+
+                    def _on_cancel(_event=None):
+                        dlg.destroy()
+
+                    if not multi_select:
+                        sel_lb.bind('<Double-Button-1>', _on_ok)
+
+                    btn_f = ttk.Frame(dlg)
+                    btn_f.pack(fill=tk.X, padx=10, pady=(0, 10))
+                    ttk.Button(btn_f, text="OK",     command=_on_ok,     width=10).pack(side='right', padx=(5, 0))
+                    ttk.Button(btn_f, text="Cancel", command=_on_cancel, width=10).pack(side='right')
+                    dlg.bind('<Return>', _on_ok)
+                    dlg.bind('<Escape>', _on_cancel)
+                    dlg.update_idletasks()
+                    dlg.geometry(
+                        f'400x450+{root.winfo_x() + (root.winfo_width()  - 400) // 2}'
+                        f'+{root.winfo_y()       + (root.winfo_height() - 450) // 2}')
+                    root.wait_window(dlg)
+                    return result['names']
+
+                def _sov_set(_lb=_sov_lb, _ctrl=_sov_ctrl, _cn=_sov_cn):
+                    import tkinter.messagebox as messagebox
+                    sel = list(_lb.curselection())
+                    if not sel:
+                        messagebox.showinfo("Set", "Select a row to replace.")
+                        return
+                    chosen = _sov_open_picker(
+                        multi_select=False,
+                        title=f"Set Object Reference for '{_cn}'")
+                    if not chosen:
+                        return
+                    new_name = chosen[0]
+                    for idx in sel:
+                        _lb.delete(idx)
+                        _lb.insert(idx, new_name)
+                        _lb.selection_set(idx)
+                    _ctrl._names = list(_lb.get(0, tk.END))
+                    _lb.config(height=min(10, max(3, _lb.size())))
+                    if output_file:
+                        write_file(output_file)
+                    if deltas_file:
+                        write_file(deltas_file, True)
+
+                def _sov_add(_lb=_sov_lb, _ctrl=_sov_ctrl, _cn=_sov_cn):
+                    current = set(_lb.get(0, tk.END))
+                    chosen = _sov_open_picker(
+                        multi_select=True,
+                        title=f"Add Object(s) to '{_cn}'")
+                    added = False
+                    for name in chosen:
+                        if name not in current:
+                            _ctrl._names.append(name)
+                            _lb.insert(tk.END, name)
+                            current.add(name)
+                            added = True
+                    if added:
+                        _lb.config(height=min(10, max(3, _lb.size())))
+                        if output_file:
+                            write_file(output_file)
+                        if deltas_file:
+                            write_file(deltas_file, True)
+
+                def _sov_remove(_lb=_sov_lb, _ctrl=_sov_ctrl):
+                    import tkinter.messagebox as messagebox
+                    sel = list(_lb.curselection())
+                    if not sel:
+                        messagebox.showinfo("Remove", "Select one or more entries to remove.")
+                        return
+                    for idx in reversed(sel):
+                        _lb.delete(idx)
+                    _ctrl._names = list(_lb.get(0, tk.END))
+                    _lb.config(height=min(10, max(3, _lb.size())))
+                    if output_file:
+                        write_file(output_file)
+                    if deltas_file:
+                        write_file(deltas_file, True)
+
+                btn_frame = ttk.Frame(outer_frame)
+                btn_frame.pack(side=tk.TOP, fill=tk.X, pady=(4, 0))
+                ttk.Button(btn_frame, text="Set",      command=_sov_set).pack(side=tk.LEFT, padx=(0, 4))
+                ttk.Button(btn_frame, text="+ Add",    command=_sov_add).pack(side=tk.LEFT, padx=(0, 4))
+                ttk.Button(btn_frame, text="- Remove", command=_sov_remove).pack(side=tk.LEFT)
+
+                outer_frame._control = control
+                actual_widget = outer_frame
             
             elif control_type == "stringvector":
                 # String vector - list of strings
@@ -8013,7 +8204,7 @@ def refresh_main_list():
 
                 control = NumericVectorControl(initial_value, _num_type)
 
-                if _default_len <= 4:
+                if 0 < _default_len <= 4:
                     # ---- Compact inline fields (fixed-length) ----
                     fields_frame = ttk.Frame(sub_frame)
                     _field_vars = []
@@ -8099,8 +8290,8 @@ def refresh_main_list():
                             _ev.set(_lb.get(sel[0]))
                     listbox.bind('<<ListboxSelect>>', _on_nv_select)
 
-                    def _nv_parse_entry(_nt=_num_type, _nl=_num_label):
-                        raw = entry_var.get().strip()
+                    def _nv_parse_entry(_nt=_num_type, _nl=_num_label, _ev=entry_var):
+                        raw = _ev.get().strip()
                         if not raw:
                             return None, f"Enter a {_nl} value."
                         try:
@@ -8108,8 +8299,9 @@ def refresh_main_list():
                         except ValueError:
                             return None, f"'{raw}' is not a valid {_nl}."
 
-                    def _nv_set(_lb=_lb_nv, _ctrl=_ctrl_nv):
-                        val, err = _nv_parse_entry()
+                    def _nv_set(_lb=_lb_nv, _ctrl=_ctrl_nv, _parse=_nv_parse_entry):
+                        import tkinter.messagebox as messagebox
+                        val, err = _parse()
                         if err:
                             messagebox.showerror("Invalid value", err)
                             return
@@ -8126,8 +8318,9 @@ def refresh_main_list():
                         if deltas_file:
                             write_file(deltas_file, True)
 
-                    def _nv_add(_lb=_lb_nv, _ctrl=_ctrl_nv):
-                        val, err = _nv_parse_entry()
+                    def _nv_add(_lb=_lb_nv, _ctrl=_ctrl_nv, _parse=_nv_parse_entry):
+                        import tkinter.messagebox as messagebox
+                        val, err = _parse()
                         if err:
                             messagebox.showerror("Invalid value", err)
                             return
@@ -8139,6 +8332,7 @@ def refresh_main_list():
                             write_file(deltas_file, True)
 
                     def _nv_remove(_lb=_lb_nv, _ctrl=_ctrl_nv):
+                        import tkinter.messagebox as messagebox
                         sel = list(_lb.curselection())
                         if not sel:
                             messagebox.showinfo("Remove", "Select one or more items to remove.")
@@ -8483,6 +8677,7 @@ def create_outliner(parent):
         'Light Sets': [],
         'Shadow Sets': [],
         'Light Filter Sets': [],
+        'Light Filters': [],
         'Geometry': [],
         'GeometrySet': [],
         'Maps': [],
@@ -8514,11 +8709,14 @@ def create_outliner(parent):
             shortened_display_name = last_part
             full_path_for_tooltip = display_name
         
+        if category not in categories:
+            print(f"Warning: unrecognized category '{category}' for class '{class_name}', assigning to 'Other'")
+            category = 'Other'
         categories[category].append((shortened_display_name, assignment, class_name, obj_name, full_path_for_tooltip))
     
     # Collapsible categories
     # Collapsible categories (all except Scene Variables)
-    collapsible_categories = ['Cameras', 'Lights', 'Light Sets', 'Shadow Sets', 'Light Filter Sets', 'Geometry', 'GeometrySet', 'Maps', 'NormalMap', 'Materials', 'Displacement', 'Render Outputs', 'DisplayFilter', 'Volume', 'Usd', 'Layer', 'UserData', 'Other']
+    collapsible_categories = ['Cameras', 'Lights', 'Light Sets', 'Shadow Sets', 'Light Filter Sets', 'Light Filters', 'Geometry', 'GeometrySet', 'Maps', 'NormalMap', 'Materials', 'Displacement', 'Render Outputs', 'DisplayFilter', 'Volume', 'Usd', 'Layer', 'UserData', 'Other']
     
     # Pagination settings to prevent X Error crashes with large categories
     ITEMS_PER_PAGE = 100
@@ -9888,6 +10086,7 @@ def refresh_outliner():
         'Light Sets': [],
         'Shadow Sets': [],
         'Light Filter Sets': [],
+        'Light Filters': [],
         'Geometry': [],
         'GeometrySet': [],
         'Maps': [],
@@ -9916,10 +10115,13 @@ def refresh_outliner():
             shortened_display_name = last_part
             full_path_for_tooltip = display_name
         
+        if category not in categories:
+            print(f"Warning: unrecognized category '{category}' for class '{class_name}', assigning to 'Other'")
+            category = 'Other'
         categories[category].append((shortened_display_name, assignment, class_name, obj_name, full_path_for_tooltip))
     
     # Collapsible categories
-    collapsible_categories = ['Cameras', 'Lights', 'Light Sets', 'Shadow Sets', 'Light Filter Sets', 
+    collapsible_categories = ['Cameras', 'Lights', 'Light Sets', 'Shadow Sets', 'Light Filter Sets', 'Light Filters',
                              'Geometry', 'GeometrySet', 'Maps', 'NormalMap', 'Materials', 'Displacement', 
                              'Render Outputs', 'DisplayFilter', 'Volume', 'Usd', 'Layer', 'UserData', 'Other']
     
