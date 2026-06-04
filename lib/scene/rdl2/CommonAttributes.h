@@ -277,10 +277,40 @@
             "Tolerance < 0 allows penetration and > 0 forces a barrier space");             \
     sceneClass.setGroup("Motion Guides", attrMotionGuidesCollisionTolerance);
 
+// Shared global scalar multiplier attributes used by both local motion blur input
+// variants (points-file and explicit-list).  Factor these out so that
+// DECLARE_COMMON_LOCAL_MOTION_BLUR_ATTRIBUTES and
+// DECLARE_COMMON_LOCAL_MOTION_BLUR_POINT_ATTRIBUTES can each compose them without
+// repeating the declarations (which would cause name collisions if both macros were
+// ever used in the same SceneObject).
+#define DECLARE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES                                                       \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> attrLocalMotionBlurStrengthMult;                     \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> attrLocalMotionBlurRadiusMult;
+
+#define DEFINE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES                                                                     \
+    attrLocalMotionBlurStrengthMult =                                                                                         \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::Float>("local_motion_blur_strength_multiplier", 1.0f);                  \
+    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "display_name", "local motion blur strength multiplier");         \
+    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "label", "local motion blur strength multiplier");                \
+    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "disable when", "{ use_local_motion_blur == 0}");                 \
+    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "comment",                                                        \
+        "Global strength multiplier for local motion blur application");                                                      \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurStrengthMult);                                                      \
+                                                                                                                              \
+    attrLocalMotionBlurRadiusMult =                                                                                           \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::Float>("local_motion_blur_radius_multiplier", 1.0f);                   \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "display_name", "local motion blur radius multiplier");             \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "label", "local motion blur radius multiplier");                   \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "disable when", "{ use_local_motion_blur == 0}");                  \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "comment",                                                         \
+        "Global radius multiplier applied to per-region radius values, whether supplied via the "               \
+        "\"radius\"/\"inner_radius\" point attributes or the \"local_motion_blur_radius_list\"/"               \
+        "\"local_motion_blur_inner_radius_list\" explicit list attributes");                                   \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurRadiusMult);
+
 #define DECLARE_COMMON_LOCAL_MOTION_BLUR_ATTRIBUTES                                                             \
     scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::String> attrLocalMotionBlurPointsFile;                     \
-    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> attrLocalMotionBlurStrengthMult;                    \
-    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> attrLocalMotionBlurRadiusMult;
+    DECLARE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES
 
 #define DEFINE_COMMON_LOCAL_MOTION_BLUR_ATTRIBUTES                                                                    \
     attrLocalMotionBlurPointsFile =                                                                                   \
@@ -291,19 +321,88 @@
     sceneClass.setMetadata(attrLocalMotionBlurPointsFile, "disable when", "{ use_local_motion_blur == 0}");           \
     sceneClass.setMetadata(attrLocalMotionBlurPointsFile, "comment",                                                  \
             "File containing points defining regions of motion blur modulation");                                     \
-                                                                                                                      \
-    attrLocalMotionBlurStrengthMult =                                                                                 \
-        sceneClass.declareAttribute<scene_rdl2::rdl2::Float>("local_motion_blur_strength_multiplier", 1.0f);          \
-    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "display_name", "local motion blur strength multiplier"); \
-    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "label", "local motion blur strength multiplier");        \
-    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "disable when", "{ use_local_motion_blur == 0}");         \
-    sceneClass.setMetadata(attrLocalMotionBlurStrengthMult, "comment",                                                \
-        "Global strength multiplier for local motion blur application");                                              \
-                                                                                                                      \
-    attrLocalMotionBlurRadiusMult =                                                                                   \
-        sceneClass.declareAttribute<scene_rdl2::rdl2::Float>("local_motion_blur_radius_multiplier", 1.0f);            \
-    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "display_name", "local motion blur radius multiplier");     \
-    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "label", "local motion blur radius multiplier");            \
-    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "disable when", "{ use_local_motion_blur == 0}");           \
-    sceneClass.setMetadata(attrLocalMotionBlurRadiusMult, "comment",                                                  \
-        "Global radius multiplier for \"radius\" and \"inner_radius\" point file attributes");
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurPointsFile);                                                \
+    DEFINE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES
+
+// Variant of the local motion blur attributes that specifies regions via explicit
+// per-point lists rather than a points file.  The two shared scalar global
+// multiplier attributes are contributed via DECLARE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES,
+// preventing name collisions when only one of the two variants is used per SceneObject.
+#define DECLARE_COMMON_LOCAL_MOTION_BLUR_POINT_ATTRIBUTES                                                                        \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Vec3fVector>  attrLocalMotionBlurPositionList;                                 \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Vec4fVector>  attrLocalMotionBlurOrientList;                                \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Vec3fVector>  attrLocalMotionBlurScaleList;                                 \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::FloatVector>  attrLocalMotionBlurRadiusList;                                \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::FloatVector>  attrLocalMotionBlurInnerRadiusList;                           \
+    scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::FloatVector>  attrLocalMotionBlurMultiplierList;                            \
+    DECLARE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES
+
+#define DEFINE_COMMON_LOCAL_MOTION_BLUR_POINT_ATTRIBUTES                                                                                              \
+    attrLocalMotionBlurPositionList =                                                                                                                    \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::Vec3fVector>("local_motion_blur_position_list",                                                   \
+            scene_rdl2::rdl2::Vec3fVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur position list" });                                                                                                      \
+    sceneClass.setMetadata(attrLocalMotionBlurPositionList, "label", "local motion blur position list");                                                   \
+    sceneClass.setMetadata(attrLocalMotionBlurPositionList, "disable when", "{ use_local_motion_blur == 0}");                                           \
+    sceneClass.setMetadata(attrLocalMotionBlurPositionList, "comment",                                                                                  \
+        "World-space center position for each local motion blur region.");                                                                            \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurPositionList);                                                                                \
+                                                                                                                                                      \
+    attrLocalMotionBlurOrientList =                                                                                                                   \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::Vec4fVector>("local_motion_blur_orient_list",                                                  \
+            scene_rdl2::rdl2::Vec4fVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur orient list" });                                                                                                     \
+    sceneClass.setMetadata(attrLocalMotionBlurOrientList, "label", "local motion blur orient list");                                                 \
+    sceneClass.setMetadata(attrLocalMotionBlurOrientList, "disable when", "{ use_local_motion_blur == 0}");                                          \
+    sceneClass.setMetadata(attrLocalMotionBlurOrientList, "comment",                                                                                 \
+        "Per-point orientation quaternion (x=i, y=j, z=k, w=r) for each local motion blur region. "                                                  \
+        "Combined with the scale list, this orients and shapes the blur falloff region. "                                                             \
+        "If empty, identity orientation is used. Must match the length of local_motion_blur_position_list.");                                            \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurOrientList);                                                                               \
+                                                                                                                                                      \
+    attrLocalMotionBlurScaleList =                                                                                                                    \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::Vec3fVector>("local_motion_blur_scale_list",                                                   \
+            scene_rdl2::rdl2::Vec3fVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur scale list" });                                                                                                      \
+    sceneClass.setMetadata(attrLocalMotionBlurScaleList, "label", "local motion blur scale list");                                                   \
+    sceneClass.setMetadata(attrLocalMotionBlurScaleList, "disable when", "{ use_local_motion_blur == 0}");                                           \
+    sceneClass.setMetadata(attrLocalMotionBlurScaleList, "comment",                                                                                  \
+        "Per-point non-uniform scale (x,y,z) for each local motion blur region. "                                                                     \
+        "Non-uniform scale makes the falloff region ellipsoidal rather than spherical. "                                                              \
+        "If empty, uniform scale (1,1,1) is used. Must match the length of local_motion_blur_position_list.");                                           \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurScaleList);                                                                                \
+                                                                                                                                                      \
+    attrLocalMotionBlurRadiusList =                                                                                                                   \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::FloatVector>("local_motion_blur_radius_list",                                                  \
+            scene_rdl2::rdl2::FloatVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur radius list" });                                                                                                     \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusList, "label", "local motion blur radius list");                                                 \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusList, "disable when", "{ use_local_motion_blur == 0}");                                          \
+    sceneClass.setMetadata(attrLocalMotionBlurRadiusList, "comment",                                                                                 \
+        "Per-point outer radius for each local motion blur region. "                                                                                  \
+        "If empty, defaults to 1.0. Must match the length of local_motion_blur_position_list.");                                                         \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurRadiusList);                                                                               \
+                                                                                                                                                      \
+    attrLocalMotionBlurInnerRadiusList =                                                                                                              \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::FloatVector>("local_motion_blur_inner_radius_list",                                            \
+            scene_rdl2::rdl2::FloatVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur inner radius list" });                                                                                               \
+    sceneClass.setMetadata(attrLocalMotionBlurInnerRadiusList, "label", "local motion blur inner radius list");                                      \
+    sceneClass.setMetadata(attrLocalMotionBlurInnerRadiusList, "disable when", "{ use_local_motion_blur == 0}");                                     \
+    sceneClass.setMetadata(attrLocalMotionBlurInnerRadiusList, "comment",                                                                            \
+        "Per-point inner radius for each local motion blur region (full-strength core). "                                                             \
+        "If empty, defaults to 1.0. Must match the length of local_motion_blur_position_list.");                                                         \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurInnerRadiusList);                                                                          \
+                                                                                                                                                      \
+    attrLocalMotionBlurMultiplierList =                                                                                                               \
+        sceneClass.declareAttribute<scene_rdl2::rdl2::FloatVector>("local_motion_blur_multiplier_list",                                              \
+            scene_rdl2::rdl2::FloatVector(), scene_rdl2::rdl2::FLAGS_NONE, scene_rdl2::rdl2::INTERFACE_GENERIC,                                       \
+            { "local motion blur multiplier list" });                                                                                                 \
+    sceneClass.setMetadata(attrLocalMotionBlurMultiplierList, "label", "local motion blur multiplier list");                                         \
+    sceneClass.setMetadata(attrLocalMotionBlurMultiplierList, "disable when", "{ use_local_motion_blur == 0}");                                      \
+    sceneClass.setMetadata(attrLocalMotionBlurMultiplierList, "comment",                                                                             \
+        "Per-point motion blur strength multiplier for each local motion blur region. "                                                               \
+        "If empty, defaults to 1.0. Must match the length of local_motion_blur_position_list.");                                                         \
+    sceneClass.setGroup("Motion Blur", attrLocalMotionBlurMultiplierList);                                                                           \
+                                                                                                                                                      \
+    DEFINE_COMMON_LOCAL_MOTION_BLUR_SCALAR_ATTRIBUTES
