@@ -46,8 +46,8 @@ namespace py_scene_rdl2
                     || std::is_same<T, rdl2::Vec4f>::value
                     || std::is_same<T, rdl2::Vec4d>::value) ? 4 :
 
-               (std::is_same<T, math::Mat3f>::value
-                   || std::is_same<T, math::Mat3d>::value) ? 9 :
+               (std::is_same<T, math::Mat3f>::value)
+                  || std::is_same<T, math::Mat3d>::value ? 9 :
 
                (std::is_same<T, math::Mat4f>::value
                   || std::is_same<T, math::Mat4d>::value) ? 16 :
@@ -1045,6 +1045,8 @@ namespace py_scene_rdl2
                  std::is_same<T, scene_rdl2::rdl2::Vec3d>::value        == true ||
                  std::is_same<T, scene_rdl2::rdl2::Vec4f>::value        == true ||
                  std::is_same<T, scene_rdl2::rdl2::Vec4d>::value        == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Mat3f>::value        == true ||
+                 std::is_same<T, scene_rdl2::rdl2::Mat3d>::value        == true ||
                  std::is_same<T, scene_rdl2::rdl2::Mat4f>::value        == true ||
                  std::is_same<T, scene_rdl2::rdl2::Mat4d>::value        == true),
                  "Class template StdVectorWrapper<T> : type T not supported.");

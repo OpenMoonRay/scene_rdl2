@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 
@@ -436,6 +436,9 @@ public:
 
     std::string showAllAttributes() const; // returns all attribute info as a string for display purposes
 
+    AttributeType getOutputType() const { return mOutputType; }
+    void setOutputType(AttributeType outputType) { mOutputType= outputType; }
+
     // Metadata Keys
     static const std::string sComment;
 
@@ -583,6 +586,9 @@ private:
     // names to enforce ordering them by insertion order. This is purely for
     // UI inspection purposes.
     AttributeGroupMap mGroupMap;
+
+    // Map objects have an output type
+    AttributeType mOutputType;
 
     // Blind data
     DataPtrMap mData;

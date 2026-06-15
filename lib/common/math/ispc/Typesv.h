@@ -13,6 +13,7 @@ namespace math {
 
 #ifndef __APPLE__
 // basic types
+typedef int8_t SCENE_RDL2_SIMD_ALIGN Boolv[VLEN];
 typedef int8_t SCENE_RDL2_SIMD_ALIGN Int8v[VLEN];
 typedef int32_t SCENE_RDL2_SIMD_ALIGN Intv[VLEN];
 typedef float SCENE_RDL2_SIMD_ALIGN Floatv[VLEN];
@@ -33,6 +34,10 @@ ISPC_UTIL_TYPEDEF_STRUCT(Mat3f, Mat3fv);
 ISPC_UTIL_TYPEDEF_STRUCT(Vec2f, Vec2fv);
 ISPC_UTIL_TYPEDEF_STRUCT(Vec3f, Vec3fv);
 ISPC_UTIL_TYPEDEF_STRUCT(Xform3f, Xform3fv);
+
+ISPC_UTIL_TYPEDEF_STRUCT(Col4f, Rgbav);
+ISPC_UTIL_TYPEDEF_STRUCT(Mat4f, Mat4fv);
+ISPC_UTIL_TYPEDEF_STRUCT(Vec4f, Vec4fv);
 
 
 } // namespace math

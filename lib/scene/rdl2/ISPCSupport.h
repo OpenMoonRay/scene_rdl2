@@ -17,6 +17,9 @@ DECLARE_HANDLE(FloatAttrKey);
 DECLARE_HANDLE(Float2AttrKey);  
 DECLARE_HANDLE(Float3AttrKey);  // and Color
 DECLARE_HANDLE(Float4AttrKey);  // and Color4
+DECLARE_HANDLE(Mat3fAttrKey);
+DECLARE_HANDLE(Mat4fAttrKey);
+DECLARE_HANDLE(SceneObjectAttrKey);
 
 // Used as a context to allow C to pass SceneObject pointers
 //  that ISPC needs
@@ -188,6 +191,42 @@ inline uniform float<3> get(
 
     return result;
 }
+
+// float4
+inline uniform float<4> get(
+    PTR8 base,
+    const uniform Float4AttrKeyISPC * uniform keyIn)
+{
+    uniform float<4> result;
+    uniform AttributeKey* uniform key =
+        (uniform AttributeKey* uniform)keyIn;
+
+    uniform float<4>* uniform ans =
+        (uniform float<4>* uniform)(base + key->mOffset);
+
+/* BUG!  Breaks if I do this   *result = *(ans2);*/
+    result.x = ans->x;
+    result.y = ans->y;
+    result.z = ans->z;
+    result.w = ans->w;
+    return result;
+}
+
+// SceneObject*
+inline uniform SceneObject* uniform get(
+    PTR8 base,
+    const uniform SceneObjectAttrKeyISPC * uniform keyIn)
+{
+    uniform SceneObject* uniform result;
+
+    uniform AttributeKey* uniform key = 
+        (uniform AttributeKey* uniform)keyIn;
+
+    result = *((uniform SceneObject* uniform * uniform)(base + key->mOffset));
+
+    return result;
+}
+
 #endif
 
 

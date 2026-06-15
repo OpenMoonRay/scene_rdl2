@@ -51,6 +51,7 @@ BOOST_PYTHON_MODULE(__scene_rdl2__)
     registerMaterialPyBinding();
     registerMapPyBinding();
     registerDisplacementPyBinding();
+    registerNormalMapPyBinding();
 
     registerEnvMapPyBinding();
     registerUserDataPyBinding();

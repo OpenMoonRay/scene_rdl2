@@ -53,6 +53,20 @@ interpolate(const Vec4d& begin, const Vec4d& end, float t)
 }
 
 template <>
+Mat3f
+interpolate(const Mat3f& begin, const Mat3f& end, float t)
+{
+    return math::slerp(begin, end, t);
+}
+
+template <>
+Mat3d
+interpolate(const Mat3d& begin, const Mat3d& end, float t)
+{
+    return math::slerp(begin, end, double(t));
+}
+
+template <>
 Mat4f
 interpolate(const Mat4f& begin, const Mat4f& end, float t)
 {
@@ -459,6 +473,8 @@ SceneObject::resetToDefault(const Attribute* attr)
     case TYPE_VEC3D:                  resetToDefault(AttributeKey<Vec3d>(*attr)); break;
     case TYPE_VEC4F:                  resetToDefault(AttributeKey<Vec4f>(*attr)); break;
     case TYPE_VEC4D:                  resetToDefault(AttributeKey<Vec4d>(*attr)); break;
+    case TYPE_MAT3F:                  resetToDefault(AttributeKey<Mat3f>(*attr)); break;
+    case TYPE_MAT3D:                  resetToDefault(AttributeKey<Mat3d>(*attr)); break;
     case TYPE_MAT4F:                  resetToDefault(AttributeKey<Mat4f>(*attr)); break;
     case TYPE_MAT4D:                  resetToDefault(AttributeKey<Mat4d>(*attr)); break;
     case TYPE_SCENE_OBJECT:           resetToDefault(AttributeKey<SceneObject*>(*attr)); break;
@@ -476,6 +492,8 @@ SceneObject::resetToDefault(const Attribute* attr)
     case TYPE_VEC3D_VECTOR:           resetToDefault(AttributeKey<Vec3dVector>(*attr)); break;
     case TYPE_VEC4F_VECTOR:           resetToDefault(AttributeKey<Vec4fVector>(*attr)); break;
     case TYPE_VEC4D_VECTOR:           resetToDefault(AttributeKey<Vec4dVector>(*attr)); break;
+    case TYPE_MAT3F_VECTOR:           resetToDefault(AttributeKey<Mat3fVector>(*attr)); break;
+    case TYPE_MAT3D_VECTOR:           resetToDefault(AttributeKey<Mat3dVector>(*attr)); break;
     case TYPE_MAT4F_VECTOR:           resetToDefault(AttributeKey<Mat4fVector>(*attr)); break;
     case TYPE_MAT4D_VECTOR:           resetToDefault(AttributeKey<Mat4dVector>(*attr)); break;
     case TYPE_SCENE_OBJECT_VECTOR:    resetToDefault(AttributeKey<SceneObjectVector>(*attr)); break;
@@ -514,6 +532,8 @@ SceneObject::isDefault(const Attribute& attr) const
     case TYPE_VEC3D:                  return isDefault(AttributeKey<Vec3d>(attr));
     case TYPE_VEC4F:                  return isDefault(AttributeKey<Vec4f>(attr));
     case TYPE_VEC4D:                  return isDefault(AttributeKey<Vec4d>(attr));
+    case TYPE_MAT3F:                  return isDefault(AttributeKey<Mat3f>(attr));
+    case TYPE_MAT3D:                  return isDefault(AttributeKey<Mat3d>(attr));
     case TYPE_MAT4F:                  return isDefault(AttributeKey<Mat4f>(attr));
     case TYPE_MAT4D:                  return isDefault(AttributeKey<Mat4d>(attr));
     case TYPE_SCENE_OBJECT:           return isDefault(AttributeKey<SceneObject*>(attr));
@@ -531,6 +551,8 @@ SceneObject::isDefault(const Attribute& attr) const
     case TYPE_VEC3D_VECTOR:           return isDefault(AttributeKey<Vec3dVector>(attr));
     case TYPE_VEC4F_VECTOR:           return isDefault(AttributeKey<Vec4fVector>(attr));
     case TYPE_VEC4D_VECTOR:           return isDefault(AttributeKey<Vec4dVector>(attr));
+    case TYPE_MAT3F_VECTOR:           return isDefault(AttributeKey<Mat3fVector>(attr));
+    case TYPE_MAT3D_VECTOR:           return isDefault(AttributeKey<Mat3dVector>(attr));
     case TYPE_MAT4F_VECTOR:           return isDefault(AttributeKey<Mat4fVector>(attr));
     case TYPE_MAT4D_VECTOR:           return isDefault(AttributeKey<Mat4dVector>(attr));
     case TYPE_SCENE_OBJECT_VECTOR:    return isDefault(AttributeKey<SceneObjectVector>(attr));
@@ -664,6 +686,8 @@ template Vec3f SceneObject::get(AttributeKey<Vec3f>, float) const;
 template Vec3d SceneObject::get(AttributeKey<Vec3d>, float) const;
 template Vec4f SceneObject::get(AttributeKey<Vec4f>, float) const;
 template Vec4d SceneObject::get(AttributeKey<Vec4d>, float) const;
+template Mat3f SceneObject::get(AttributeKey<Mat3f>, float) const;
+template Mat3d SceneObject::get(AttributeKey<Mat3d>, float) const;
 template Mat4f SceneObject::get(AttributeKey<Mat4f>, float) const;
 template Mat4d SceneObject::get(AttributeKey<Mat4d>, float) const;
 
@@ -682,6 +706,8 @@ template void SceneObject::set(AttributeKey<Vec3f>, const Vec3f&);
 template void SceneObject::set(AttributeKey<Vec3d>, const Vec3d&);
 template void SceneObject::set(AttributeKey<Vec4f>, const Vec4f&);
 template void SceneObject::set(AttributeKey<Vec4d>, const Vec4d&);
+template void SceneObject::set(AttributeKey<Mat3f>, const Mat3f&);
+template void SceneObject::set(AttributeKey<Mat3d>, const Mat3d&);
 template void SceneObject::set(AttributeKey<Mat4f>, const Mat4f&);
 template void SceneObject::set(AttributeKey<Mat4d>, const Mat4d&);
 template void SceneObject::set(AttributeKey<BoolVector>, const BoolVector&);
@@ -698,6 +724,8 @@ template void SceneObject::set(AttributeKey<Vec3fVector>, const Vec3fVector&);
 template void SceneObject::set(AttributeKey<Vec3dVector>, const Vec3dVector&);
 template void SceneObject::set(AttributeKey<Vec4fVector>, const Vec4fVector&);
 template void SceneObject::set(AttributeKey<Vec4dVector>, const Vec4dVector&);
+template void SceneObject::set(AttributeKey<Mat3fVector>, const Mat3fVector&);
+template void SceneObject::set(AttributeKey<Mat3dVector>, const Mat3dVector&);
 template void SceneObject::set(AttributeKey<Mat4fVector>, const Mat4fVector&);
 template void SceneObject::set(AttributeKey<Mat4dVector>, const Mat4dVector&);
 // SceneObjectVector specialized above.
@@ -716,6 +744,8 @@ template void SceneObject::set(AttributeKey<Vec3f>, const Vec3f&, AttributeTimes
 template void SceneObject::set(AttributeKey<Vec3d>, const Vec3d&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Vec4f>, const Vec4f&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Vec4d>, const Vec4d&, AttributeTimestep);
+template void SceneObject::set(AttributeKey<Mat3f>, const Mat3f&, AttributeTimestep);
+template void SceneObject::set(AttributeKey<Mat3d>, const Mat3d&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Mat4f>, const Mat4f&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Mat4d>, const Mat4d&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<BoolVector>, const BoolVector&, AttributeTimestep);
@@ -732,6 +762,8 @@ template void SceneObject::set(AttributeKey<Vec3fVector>, const Vec3fVector&, At
 template void SceneObject::set(AttributeKey<Vec3dVector>, const Vec3dVector&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Vec4fVector>, const Vec4fVector&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Vec4dVector>, const Vec4dVector&, AttributeTimestep);
+template void SceneObject::set(AttributeKey<Mat3fVector>, const Mat3fVector&, AttributeTimestep);
+template void SceneObject::set(AttributeKey<Mat3dVector>, const Mat3dVector&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Mat4fVector>, const Mat4fVector&, AttributeTimestep);
 template void SceneObject::set(AttributeKey<Mat4dVector>, const Mat4dVector&, AttributeTimestep);
 // SceneObjectVector specialized above.
@@ -750,6 +782,8 @@ template void SceneObject::set(const std::string&, const Vec3f&);
 template void SceneObject::set(const std::string&, const Vec3d&);
 template void SceneObject::set(const std::string&, const Vec4f&);
 template void SceneObject::set(const std::string&, const Vec4d&);
+template void SceneObject::set(const std::string&, const Mat3f&);
+template void SceneObject::set(const std::string&, const Mat3d&);
 template void SceneObject::set(const std::string&, const Mat4f&);
 template void SceneObject::set(const std::string&, const Mat4d&);
 // SceneObject* provided by overload.
@@ -767,6 +801,8 @@ template void SceneObject::set(const std::string&, const Vec3fVector&);
 template void SceneObject::set(const std::string&, const Vec3dVector&);
 template void SceneObject::set(const std::string&, const Vec4fVector&);
 template void SceneObject::set(const std::string&, const Vec4dVector&);
+template void SceneObject::set(const std::string&, const Mat3fVector&);
+template void SceneObject::set(const std::string&, const Mat3dVector&);
 template void SceneObject::set(const std::string&, const Mat4fVector&);
 template void SceneObject::set(const std::string&, const Mat4dVector&);
 template void SceneObject::set(const std::string&, const SceneObjectVector&);
@@ -786,6 +822,8 @@ template void SceneObject::set(const std::string&, const Vec3f&, AttributeTimest
 template void SceneObject::set(const std::string&, const Vec3d&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Vec4f&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Vec4d&, AttributeTimestep);
+template void SceneObject::set(const std::string&, const Mat3f&, AttributeTimestep);
+template void SceneObject::set(const std::string&, const Mat3d&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Mat4f&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Mat4d&, AttributeTimestep);
 // SceneObject* provided by overload.
@@ -803,6 +841,8 @@ template void SceneObject::set(const std::string&, const Vec3fVector&, Attribute
 template void SceneObject::set(const std::string&, const Vec3dVector&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Vec4fVector&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Vec4dVector&, AttributeTimestep);
+template void SceneObject::set(const std::string&, const Mat3fVector&, AttributeTimestep);
+template void SceneObject::set(const std::string&, const Mat3dVector&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Mat4fVector&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const Mat4dVector&, AttributeTimestep);
 template void SceneObject::set(const std::string&, const SceneObjectVector&, AttributeTimestep);
@@ -822,6 +862,8 @@ template void SceneObject::setBinding(AttributeKey<Vec3f>, SceneObject* sceneObj
 template void SceneObject::setBinding(AttributeKey<Vec3d>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Vec4f>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Vec4d>, SceneObject* sceneObject);
+template void SceneObject::setBinding(AttributeKey<Mat3f>, SceneObject* sceneObject);
+template void SceneObject::setBinding(AttributeKey<Mat3d>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Mat4f>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Mat4d>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<SceneObject*>, SceneObject* sceneObject);
@@ -839,6 +881,8 @@ template void SceneObject::setBinding(AttributeKey<Vec3fVector>, SceneObject* sc
 template void SceneObject::setBinding(AttributeKey<Vec3dVector>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Vec4fVector>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Vec4dVector>, SceneObject* sceneObject);
+template void SceneObject::setBinding(AttributeKey<Mat3fVector>, SceneObject* sceneObject);
+template void SceneObject::setBinding(AttributeKey<Mat3dVector>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Mat4fVector>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<Mat4dVector>, SceneObject* sceneObject);
 template void SceneObject::setBinding(AttributeKey<SceneObjectVector>, SceneObject* sceneObject);
@@ -858,6 +902,8 @@ template void SceneObject::resetToDefault(AttributeKey<Vec3f>);
 template void SceneObject::resetToDefault(AttributeKey<Vec3d>);
 template void SceneObject::resetToDefault(AttributeKey<Vec4f>);
 template void SceneObject::resetToDefault(AttributeKey<Vec4d>);
+template void SceneObject::resetToDefault(AttributeKey<Mat3f>);
+template void SceneObject::resetToDefault(AttributeKey<Mat3d>);
 template void SceneObject::resetToDefault(AttributeKey<Mat4f>);
 template void SceneObject::resetToDefault(AttributeKey<Mat4d>);
 template void SceneObject::resetToDefault(AttributeKey<SceneObject*>);
@@ -875,6 +921,8 @@ template void SceneObject::resetToDefault(AttributeKey<Vec3fVector>);
 template void SceneObject::resetToDefault(AttributeKey<Vec3dVector>);
 template void SceneObject::resetToDefault(AttributeKey<Vec4fVector>);
 template void SceneObject::resetToDefault(AttributeKey<Vec4dVector>);
+template void SceneObject::resetToDefault(AttributeKey<Mat3fVector>);
+template void SceneObject::resetToDefault(AttributeKey<Mat3dVector>);
 template void SceneObject::resetToDefault(AttributeKey<Mat4fVector>);
 template void SceneObject::resetToDefault(AttributeKey<Mat4dVector>);
 template void SceneObject::resetToDefault(AttributeKey<SceneObjectVector>);
@@ -894,6 +942,8 @@ template bool SceneObject::isDefault(AttributeKey<Vec3f>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec3d>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec4f>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec4d>) const;
+template bool SceneObject::isDefault(AttributeKey<Mat3f>) const;
+template bool SceneObject::isDefault(AttributeKey<Mat3d>) const;
 template bool SceneObject::isDefault(AttributeKey<Mat4f>) const;
 template bool SceneObject::isDefault(AttributeKey<Mat4d>) const;
 template bool SceneObject::isDefault(AttributeKey<SceneObject*>) const;
@@ -911,6 +961,8 @@ template bool SceneObject::isDefault(AttributeKey<Vec3fVector>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec3dVector>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec4fVector>) const;
 template bool SceneObject::isDefault(AttributeKey<Vec4dVector>) const;
+template bool SceneObject::isDefault(AttributeKey<Mat3fVector>) const;
+template bool SceneObject::isDefault(AttributeKey<Mat3dVector>) const;
 template bool SceneObject::isDefault(AttributeKey<Mat4fVector>) const;
 template bool SceneObject::isDefault(AttributeKey<Mat4dVector>) const;
 template bool SceneObject::isDefault(AttributeKey<SceneObjectVector>) const;

@@ -222,6 +222,30 @@ TestAttributeKey::testEquality()
         CPPUNIT_ASSERT(key != otherKey);
     }
     {
+        Attribute attr("mat3f", TYPE_MAT3F, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3f> key(attr);
+        Attribute sameAttr("same mat3f", TYPE_MAT3F, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3f> sameKey(attr);
+        Attribute otherAttr("other mat3f", TYPE_MAT3F, FLAGS_NONE, 1, 42);
+        AttributeKey<Mat3f> otherKey(otherAttr);
+        CPPUNIT_ASSERT(key == sameKey);
+        CPPUNIT_ASSERT(!(key == otherKey));
+        CPPUNIT_ASSERT(!(key != sameKey));
+        CPPUNIT_ASSERT(key != otherKey);
+    }
+    {
+        Attribute attr("mat3d", TYPE_MAT3D, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3d> key(attr);
+        Attribute sameAttr("same mat3d", TYPE_MAT3D, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3d> sameKey(attr);
+        Attribute otherAttr("other mat3d", TYPE_MAT3D, FLAGS_NONE, 1, 42);
+        AttributeKey<Mat3d> otherKey(otherAttr);
+        CPPUNIT_ASSERT(key == sameKey);
+        CPPUNIT_ASSERT(!(key == otherKey));
+        CPPUNIT_ASSERT(!(key != sameKey));
+        CPPUNIT_ASSERT(key != otherKey);
+    }
+    {
         Attribute attr("mat4f", TYPE_MAT4F, FLAGS_NONE, 0, 42);
         AttributeKey<Mat4f> key(attr);
         Attribute sameAttr("same mat4f", TYPE_MAT4F, FLAGS_NONE, 0, 42);
@@ -396,6 +420,30 @@ TestAttributeKey::testEquality()
         AttributeKey<Vec3dVector> sameKey(attr);
         Attribute otherAttr("other vec3d vector", TYPE_VEC3D_VECTOR, FLAGS_NONE, 1, 42);
         AttributeKey<Vec3dVector> otherKey(otherAttr);
+        CPPUNIT_ASSERT(key == sameKey);
+        CPPUNIT_ASSERT(!(key == otherKey));
+        CPPUNIT_ASSERT(!(key != sameKey));
+        CPPUNIT_ASSERT(key != otherKey);
+    }
+    {
+        Attribute attr("mat3f vector", TYPE_MAT3F_VECTOR, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3fVector> key(attr);
+        Attribute sameAttr("same mat3f vector", TYPE_MAT3F_VECTOR, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3fVector> sameKey(attr);
+        Attribute otherAttr("other mat3f vector", TYPE_MAT3F_VECTOR, FLAGS_NONE, 1, 42);
+        AttributeKey<Mat3fVector> otherKey(otherAttr);
+        CPPUNIT_ASSERT(key == sameKey);
+        CPPUNIT_ASSERT(!(key == otherKey));
+        CPPUNIT_ASSERT(!(key != sameKey));
+        CPPUNIT_ASSERT(key != otherKey);
+    }
+    {
+        Attribute attr("mat3d vector", TYPE_MAT3D_VECTOR, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3dVector> key(attr);
+        Attribute sameAttr("same mat3d vector", TYPE_MAT3D_VECTOR, FLAGS_NONE, 0, 42);
+        AttributeKey<Mat3dVector> sameKey(attr);
+        Attribute otherAttr("other mat3d vector", TYPE_MAT3D_VECTOR, FLAGS_NONE, 1, 42);
+        AttributeKey<Mat3dVector> otherKey(otherAttr);
         CPPUNIT_ASSERT(key == sameKey);
         CPPUNIT_ASSERT(!(key == otherKey));
         CPPUNIT_ASSERT(!(key != sameKey));
@@ -578,6 +626,24 @@ TestAttributeKey::testTypes()
         , except::TypeError);
     }
     {
+        Attribute attr("mat3f", TYPE_MAT3F, FLAGS_NONE, 0, 42);
+        CPPUNIT_ASSERT_NO_THROW(
+            AttributeKey<Mat3f> key(attr);
+        );
+        CPPUNIT_ASSERT_THROW(
+            AttributeKey<Mat3f> key(unknownAttr);
+        , except::TypeError);
+    }
+    {
+        Attribute attr("mat3d", TYPE_MAT3D, FLAGS_NONE, 0, 42);
+        CPPUNIT_ASSERT_NO_THROW(
+            AttributeKey<Mat3d> key(attr);
+        );
+        CPPUNIT_ASSERT_THROW(
+            AttributeKey<Mat3d> key(unknownAttr);
+        , except::TypeError);
+    }
+    {
         Attribute attr("mat4f", TYPE_MAT4F, FLAGS_NONE, 0, 42);
         CPPUNIT_ASSERT_NO_THROW(
             AttributeKey<Mat4f> key(attr);
@@ -710,6 +776,24 @@ TestAttributeKey::testTypes()
         );
         CPPUNIT_ASSERT_THROW(
             AttributeKey<Vec3dVector> key(unknownAttr);
+        , except::TypeError);
+    }
+    {
+        Attribute attr("mat3f vector", TYPE_MAT3F_VECTOR, FLAGS_NONE, 0, 42);
+        CPPUNIT_ASSERT_NO_THROW(
+            AttributeKey<Mat3fVector> key(attr);
+        );
+        CPPUNIT_ASSERT_THROW(
+            AttributeKey<Mat3fVector> key(unknownAttr);
+        , except::TypeError);
+    }
+    {
+        Attribute attr("mat3d vector", TYPE_MAT3D_VECTOR, FLAGS_NONE, 0, 42);
+        CPPUNIT_ASSERT_NO_THROW(
+            AttributeKey<Mat3dVector> key(attr);
+        );
+        CPPUNIT_ASSERT_THROW(
+            AttributeKey<Mat3dVector> key(unknownAttr);
         , except::TypeError);
     }
     {

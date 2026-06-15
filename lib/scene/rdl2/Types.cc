@@ -229,6 +229,12 @@ attributeTypeName(AttributeType type)
     case TYPE_VEC4D:
         return "Vec4d";
 
+    case TYPE_MAT3F:
+        return "Mat3f";
+
+    case TYPE_MAT3D:
+        return "Mat3d";
+
     case TYPE_MAT4F:
         return "Mat4f";
 
@@ -279,6 +285,12 @@ attributeTypeName(AttributeType type)
 
     case TYPE_VEC4D_VECTOR:
         return "Vec4dVector";
+
+    case TYPE_MAT3F_VECTOR:
+        return "Mat3fVector";
+
+    case TYPE_MAT3D_VECTOR:
+        return "Mat3dVector";
 
     case TYPE_MAT4F_VECTOR:
         return "Mat4fVector";
@@ -460,6 +472,41 @@ convertFromString<Vec4d>(std::string value)
                  convertFromString<Double>(tokens[3]));
 }
 
+template <>
+Mat3f
+convertFromString<Mat3f>(std::string value)
+{
+    boost::algorithm::trim(value);
+    removeOptionalParens(value);
+    auto tokens = tokenizeTuple<Mat3f>(std::move(value), 9);
+    return Mat3f(convertFromString<Float>(tokens[0]),
+                 convertFromString<Float>(tokens[1]),
+                 convertFromString<Float>(tokens[2]),
+                 convertFromString<Float>(tokens[3]),
+                 convertFromString<Float>(tokens[4]),
+                 convertFromString<Float>(tokens[5]),
+                 convertFromString<Float>(tokens[6]),
+                 convertFromString<Float>(tokens[7]),
+                 convertFromString<Float>(tokens[8]));
+}
+
+template <>
+Mat3d
+convertFromString<Mat3d>(std::string value)
+{
+    boost::algorithm::trim(value);
+    removeOptionalParens(value);
+    auto tokens = tokenizeTuple<Mat3d>(std::move(value), 9);
+    return Mat3d(convertFromString<Double>(tokens[0]),
+                 convertFromString<Double>(tokens[1]),
+                 convertFromString<Double>(tokens[2]),
+                 convertFromString<Double>(tokens[3]),
+                 convertFromString<Double>(tokens[4]),
+                 convertFromString<Double>(tokens[5]),
+                 convertFromString<Double>(tokens[6]),
+                 convertFromString<Double>(tokens[7]),
+                 convertFromString<Double>(tokens[8]));
+}
 
 template <>
 Mat4f
@@ -652,6 +699,26 @@ convertFromString<Vec4dVector>(std::string value)
 }
 
 template <>
+Mat3fVector
+convertFromString<Mat3fVector>(std::string value)
+{
+    boost::algorithm::trim(value);
+    removeOptionalBrackets(value);
+    return tokensToVector<Mat3fVector>(
+        tokenizeGroupedList(std::move(value), "(", ")"));
+}
+
+template <>
+Mat3dVector
+convertFromString<Mat3dVector>(std::string value)
+{
+    boost::algorithm::trim(value);
+    removeOptionalBrackets(value);
+    return tokensToVector<Mat3dVector>(
+        tokenizeGroupedList(std::move(value), "(", ")"));
+}
+
+template <>
 Mat4fVector
 convertFromString<Mat4fVector>(std::string value)
 {
@@ -686,6 +753,8 @@ template Vec3f convertFromString<Vec3f>(std::string);
 template Vec3d convertFromString<Vec3d>(std::string);
 template Vec4f convertFromString<Vec4f>(std::string);
 template Vec4d convertFromString<Vec4d>(std::string);
+template Mat3f convertFromString<Mat3f>(std::string);
+template Mat3d convertFromString<Mat3d>(std::string);
 template Mat4f convertFromString<Mat4f>(std::string);
 template Mat4d convertFromString<Mat4d>(std::string);
 template BoolVector convertFromString<BoolVector>(std::string);
@@ -702,6 +771,8 @@ template Vec3fVector convertFromString<Vec3fVector>(std::string);
 template Vec3dVector convertFromString<Vec3dVector>(std::string);
 template Vec4fVector convertFromString<Vec4fVector>(std::string);
 template Vec4dVector convertFromString<Vec4dVector>(std::string);
+template Mat3fVector convertFromString<Mat3fVector>(std::string);
+template Mat3dVector convertFromString<Mat3dVector>(std::string);
 template Mat4fVector convertFromString<Mat4fVector>(std::string);
 template Mat4dVector convertFromString<Mat4dVector>(std::string);
 #endif

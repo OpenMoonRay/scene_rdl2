@@ -136,6 +136,7 @@ private:
     static const char* VEC2_METATABLE;
     static const char* VEC3_METATABLE;
     static const char* VEC4_METATABLE;
+    static const char* MAT3_METATABLE;
     static const char* MAT4_METATABLE;
     static const char* BOUND_VALUE_METATABLE;
     static const char* BLURRED_VALUE_METATABLE;
@@ -496,6 +497,14 @@ private:
     RDL2_LUA_DECLARE(vec4Multiply);
     RDL2_LUA_DECLARE(vec4Divide);
     RDL2_LUA_DECLARE(vec4UnaryMinus);
+
+    // Callback functions for Mat3.
+    RDL2_LUA_DECLARE(mat3Create);
+    RDL2_LUA_DECLARE(mat3Index);
+    RDL2_LUA_DECLARE(mat3NewIndex);
+    RDL2_LUA_DECLARE(mat3Destroy);
+    RDL2_LUA_DECLARE(mat3ToString);
+    RDL2_LUA_DECLARE(mat3Multiply);
 
     // Callback functions for Mat4.
     RDL2_LUA_DECLARE(mat4Create);

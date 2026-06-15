@@ -177,6 +177,7 @@ const char* AsciiReader::RGBA_METATABLE = "rdl2_Rgba";
 const char* AsciiReader::VEC2_METATABLE = "rdl2_Vec2";
 const char* AsciiReader::VEC3_METATABLE = "rdl2_Vec3";
 const char* AsciiReader::VEC4_METATABLE = "rdl2_Vec4";
+const char* AsciiReader::MAT3_METATABLE = "rdl2_Mat3";
 const char* AsciiReader::MAT4_METATABLE = "rdl2_Mat4";
 const char* AsciiReader::BOUND_VALUE_METATABLE = "rdl2_BoundValue";
 const char* AsciiReader::BLURRED_VALUE_METATABLE = "rdl2_BlurredValue";
@@ -219,6 +220,7 @@ AsciiReader::AsciiReader(SceneContext& context) :
     lua_register(mLua, "Vec2", RDL2_LUA_FUNCPTR(vec2Create));
     lua_register(mLua, "Vec3", RDL2_LUA_FUNCPTR(vec3Create));
     lua_register(mLua, "Vec4", RDL2_LUA_FUNCPTR(vec4Create));
+    lua_register(mLua, "Mat3", RDL2_LUA_FUNCPTR(mat3Create));
     lua_register(mLua, "Mat4", RDL2_LUA_FUNCPTR(mat4Create));
     lua_register(mLua, "bind", RDL2_LUA_FUNCPTR(boundValueCreate));
     lua_register(mLua, "blur", RDL2_LUA_FUNCPTR(blurredValueCreate));
@@ -516,6 +518,19 @@ AsciiReader::createMetatables()
     }
     lua_pop(mLua, 1);
 
+    // Mat3 objects (backed by Mat3d) support indexed gets and sets for
+    // individual components, garbage collection (they're allocated on Lua's
+    // heap), conversion to strings, and multiplcation for constructing
+    // transform matrices.
+    if (luaL_newmetatable(mLua, MAT3_METATABLE)) {
+        RDL2_LUA_METAMETHOD("__index", mat3Index);
+        RDL2_LUA_METAMETHOD("__newindex", mat3NewIndex);
+        RDL2_LUA_METAMETHOD("__gc", mat3Destroy);
+        RDL2_LUA_METAMETHOD("__tostring", mat3ToString);
+        RDL2_LUA_METAMETHOD("__mul", mat3Multiply);
+    }
+    lua_pop(mLua, 1);
+
     // Mat4 objects (backed by Mat4d) support indexed gets and sets for
     // individual components, garbage collection (they're allocated on Lua's
     // heap), conversion to strings, and multiplcation for constructing
@@ -681,6 +696,8 @@ AsciiReader::metatableName(int index)
         return VEC2_METATABLE;
     } else if (hasMetatable(index, VEC3_METATABLE)) {
         return VEC3_METATABLE;
+    } else if (hasMetatable(index, MAT3_METATABLE)) {
+        return MAT3_METATABLE;
     } else if (hasMetatable(index, MAT4_METATABLE)) {
         return MAT4_METATABLE;
     } else if (hasMetatable(index, BOUND_VALUE_METATABLE)) {
@@ -772,6 +789,14 @@ AsciiReader::pushValue(const SceneObject* so, const Attribute* attr,
 
     case TYPE_VEC4D:
         boxNew<Vec4d>(VEC4_METATABLE, so->get(AttributeKey<Vec4d>(*attr), timestep));
+        break;
+
+    case TYPE_MAT3F:
+        boxNew<Mat3d>(MAT3_METATABLE, so->get(AttributeKey<Mat3f>(*attr), timestep));
+        break;
+
+    case TYPE_MAT3D:
+        boxNew<Mat3d>(MAT3_METATABLE, so->get(AttributeKey<Mat3d>(*attr), timestep));
         break;
 
     case TYPE_MAT4F:
@@ -894,6 +919,22 @@ AsciiReader::pushValue(const SceneObject* so, const Attribute* attr,
         pushVector(so->get(AttributeKey<Vec4dVector>(*attr), timestep),
             [this](const Vec4d& v) {
                 boxNew<Vec4d>(VEC4_METATABLE, v);
+            }
+        );
+        break;
+
+    case TYPE_MAT3F_VECTOR:
+        pushVector(so->get(AttributeKey<Mat3fVector>(*attr), timestep),
+            [this](const Mat3f& v) {
+                boxNew<Mat3d>(MAT3_METATABLE, v);
+            }
+        );
+        break;
+
+    case TYPE_MAT3D_VECTOR:
+        pushVector(so->get(AttributeKey<Mat3dVector>(*attr), timestep),
+            [this](const Mat3d& v) {
+                boxNew<Mat3d>(MAT3_METATABLE, v);
             }
         );
         break;
@@ -1205,6 +1246,12 @@ AsciiReader::getBinding(SceneObject* so, const Attribute* attr)
     case TYPE_VEC4D:
         return getBindingHelper<Vec4d>(so, attr);
 
+    case TYPE_MAT3F:
+        return getBindingHelper<Mat3f>(so, attr);
+
+    case TYPE_MAT3D:
+        return getBindingHelper<Mat3d>(so, attr);
+
     case TYPE_MAT4F:
         return getBindingHelper<Mat4f>(so, attr);
 
@@ -1255,6 +1302,12 @@ AsciiReader::getBinding(SceneObject* so, const Attribute* attr)
 
     case TYPE_VEC4D_VECTOR:
         return getBindingHelper<Vec4dVector>(so, attr);
+
+    case TYPE_MAT3F_VECTOR:
+        return getBindingHelper<Mat3fVector>(so, attr);
+
+    case TYPE_MAT3D_VECTOR:
+        return getBindingHelper<Mat3dVector>(so, attr);
 
     case TYPE_MAT4F_VECTOR:
         return getBindingHelper<Mat4fVector>(so, attr);
@@ -1347,6 +1400,14 @@ AsciiReader::setBinding(SceneObject* so, const Attribute* attr,
         setBindingHelper<Vec4d>(so, attr, boundObj);
         break;
 
+    case TYPE_MAT3F:
+        setBindingHelper<Mat3f>(so, attr, boundObj);
+        break;
+
+    case TYPE_MAT3D:
+        setBindingHelper<Mat3d>(so, attr, boundObj);
+        break;
+
     case TYPE_MAT4F:
         setBindingHelper<Mat4f>(so, attr, boundObj);
         break;
@@ -1413,6 +1474,14 @@ AsciiReader::setBinding(SceneObject* so, const Attribute* attr,
 
     case TYPE_VEC4D_VECTOR:
         setBindingHelper<Vec4dVector>(so, attr, boundObj);
+        break;
+
+    case TYPE_MAT3F_VECTOR:
+        setBindingHelper<Mat3fVector>(so, attr, boundObj);
+        break;
+
+    case TYPE_MAT3D_VECTOR:
+        setBindingHelper<Mat3dVector>(so, attr, boundObj);
         break;
 
     case TYPE_MAT4F_VECTOR:
@@ -1566,6 +1635,18 @@ AsciiReader::setValue(SceneObject* so, const Attribute* attr, int valueIndex,
         });
         break;
 
+    case TYPE_MAT3F:
+        setSingleAttr<Mat3f>(so, attr, valueIndex, blurred, timestep, [this](int index) {
+            return extractComplex<Mat3f, Mat3d>(index, MAT3_METATABLE);
+        });
+        break;
+
+    case TYPE_MAT3D:
+        setSingleAttr<Mat3d>(so, attr, valueIndex, blurred, timestep, [this](int index) {
+            return extractComplex<Mat3d, Mat3d>(index, MAT3_METATABLE);
+        });
+        break;
+
     case TYPE_MAT4F:
         setSingleAttr<Mat4f>(so, attr, valueIndex, blurred, timestep, [this](int index) {
             return extractComplex<Mat4f, Mat4d>(index, MAT4_METATABLE);
@@ -1665,6 +1746,18 @@ AsciiReader::setValue(SceneObject* so, const Attribute* attr, int valueIndex,
     case TYPE_VEC4D_VECTOR:
         setVectorAttr<Vec4dVector>(so, attr, valueIndex, blurred, timestep, [this](int index) {
             return extractComplex<Vec4d, Vec4d>(index, VEC4_METATABLE);
+        });
+        break;
+
+    case TYPE_MAT3F_VECTOR:
+        setVectorAttr<Mat3fVector>(so, attr, valueIndex, blurred, timestep, [this](int index) {
+            return extractComplex<Mat3f, Mat3d>(index, MAT3_METATABLE);
+        });
+        break;
+
+    case TYPE_MAT3D_VECTOR:
+        setVectorAttr<Mat3dVector>(so, attr, valueIndex, blurred, timestep, [this](int index) {
+            return extractComplex<Mat3d, Mat3d>(index, MAT3_METATABLE);
         });
         break;
 
@@ -3615,6 +3708,82 @@ RDL2_LUA_DEFINE(vec4Subtract) { return commonSubtract<Vec4d>(VEC4_METATABLE); }
 RDL2_LUA_DEFINE(vec4Multiply) { return commonMultiply<Vec4d>(VEC4_METATABLE); }
 RDL2_LUA_DEFINE(vec4Divide) { return commonDivide<Vec4d>(VEC4_METATABLE); }
 RDL2_LUA_DEFINE(vec4UnaryMinus) { return commonUnaryMinus<Vec4d>(VEC4_METATABLE); }
+
+// ---------------------------------------------------------------------------
+//      MAT3
+// ---------------------------------------------------------------------------
+
+RDL2_LUA_DEFINE(mat3Create)
+{
+    checkArgCount(9, "Mat3");
+    double a = luaL_checknumber(mLua, 1);
+    double b = luaL_checknumber(mLua, 2);
+    double c = luaL_checknumber(mLua, 3);
+    double d = luaL_checknumber(mLua, 4);
+    double e = luaL_checknumber(mLua, 5);
+    double f = luaL_checknumber(mLua, 6);
+    double g = luaL_checknumber(mLua, 7);
+    double h = luaL_checknumber(mLua, 8);
+    double i = luaL_checknumber(mLua, 9);
+    boxNew<Mat3d>(MAT3_METATABLE,
+            a, b, c, d, e, f, g, h, i);
+    return 1;
+}
+
+RDL2_LUA_DEFINE(mat3Index)
+{
+    Mat3d* mat = unbox<Mat3d>(lua_touserdata(mLua, 1));
+    auto index = luaL_checkinteger(mLua, 2);
+
+    // Matrices only support indexing by number.
+    switch (index) {
+    case 0: case 1: case 2:
+        lua_pushnumber(mLua, mat->vx[index]);
+        break;
+
+    case 3: case 4: case 5:
+        lua_pushnumber(mLua, mat->vy[index - 3]);
+        break;
+
+    case 6: case 7: case 8:
+        lua_pushnumber(mLua, mat->vz[index - 6]);
+        break;
+
+    default:
+        lua_pushnil(mLua);
+    }
+
+    return 1;
+}
+
+RDL2_LUA_DEFINE(mat3NewIndex)
+{
+    Mat3d* mat = unbox<Mat3d>(lua_touserdata(mLua, 1));
+    auto index = luaL_checkinteger(mLua, 2);
+    float value = luaL_checknumber(mLua, 3);
+
+    // Matrices only support indexing by number.
+    switch (index) {
+    case 0: case 1: case 2:
+        mat->vx[index] = value;
+        break;
+
+    case 3: case 4: case 5:
+        mat->vy[index - 3] = value;
+        break;
+
+    case 6: case 7: case 8:
+        mat->vz[index - 6] = value;
+        break;
+    }
+
+    return 0;
+}
+
+RDL2_LUA_DEFINE(mat3Destroy) { return commonDestroy<Mat3d>(); }
+RDL2_LUA_DEFINE(mat3ToString) { return commonToString<Mat3d>(); }
+RDL2_LUA_DEFINE(mat3Multiply) { return commonMultiply<Mat3d>(MAT3_METATABLE); }
+
 
 // ---------------------------------------------------------------------------
 //      MAT4

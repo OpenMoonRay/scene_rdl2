@@ -89,6 +89,7 @@ namespace py_scene_rdl2
     void registerMaterialPyBinding();
     void registerMapPyBinding();
     void registerDisplacementPyBinding();
+    void registerNormalMapPyBinding();
 
     void registerEnvMapPyBinding();
     void registerUserDataPyBinding();

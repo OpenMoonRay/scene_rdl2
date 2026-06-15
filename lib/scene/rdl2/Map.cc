@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 
@@ -13,12 +13,15 @@ namespace scene_rdl2 {
 namespace rdl2 {
 
 Map::Map(const SceneClass& sceneClass, const std::string& name) :
-    Parent(sceneClass, name),
-    mSampleFunc(nullptr),
-    mSampleFuncv(nullptr),
-    mOriginalSampleFunc(nullptr),
-    mOriginalSampleFuncv(nullptr)
+    Parent(sceneClass, name)
 {
+    // it doesn't matter which union member we initialize to nullptr
+    // since the pointers are all the same size
+    mSampleFuncBool = nullptr;
+    mSampleFuncvBool = nullptr;
+    mOutputType = TYPE_RGB; // this should be overwritten in the constructor of the derived class
+    mOriginalSampleFuncBool = nullptr;
+    mOriginalSampleFuncvBool = nullptr;
     // Add the Map interface.
     mType |= INTERFACE_MAP;
 }

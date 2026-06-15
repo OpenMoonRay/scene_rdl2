@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -138,19 +138,23 @@ public:
     static finline void sample(const rdl2::Map* self,
                                moonray::shading::TLState *tls,
                                const moonray::shading::State& st,
-                               math::Color* result);
+                               Bool* result);
 };
 
 MapProxy::MapProxy(const SceneClass& sceneClass, const std::string& name)
     : Map(sceneClass, name)
 {
-    mSampleFunc = MapProxy::sample;
+    mSampleFuncBool = MapProxy::sample;
+    mOutputType = sceneClass.getOutputType();
 }
 
+// since this sample function doesn't access the result value we can
+// get away with using the same function regardless of what the result
+// type is
 void
 MapProxy::sample(const rdl2::Map* self, moonray::shading::TLState *tls,
                    const moonray::shading::State& st,
-                   math::Color* result)
+                   Bool* /* result */)
 {
     const MapProxy* me = static_cast<const MapProxy*>(self);
     std::stringstream errMsg;

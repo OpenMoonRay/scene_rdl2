@@ -115,6 +115,28 @@ getJsonForValue<scene_rdl2::rdl2::Mat4d::Vector>(const scene_rdl2::rdl2::Mat4d::
 
 template<>
 Json::Value
+getJsonForValue<scene_rdl2::rdl2::Mat3f>(const scene_rdl2::rdl2::Mat3f mat)
+{
+    Json::Value arrayValue;
+    arrayValue.append(getJsonForValue(mat.row0()));
+    arrayValue.append(getJsonForValue(mat.row1()));
+    arrayValue.append(getJsonForValue(mat.row2()));
+    return arrayValue;
+}
+
+template<>
+Json::Value
+getJsonForValue<scene_rdl2::rdl2::Mat3d>(const scene_rdl2::rdl2::Mat3d mat)
+{
+    Json::Value arrayValue;
+    arrayValue.append(getJsonForValue(mat.row0()));
+    arrayValue.append(getJsonForValue(mat.row1()));
+    arrayValue.append(getJsonForValue(mat.row2()));
+    return arrayValue;
+}
+
+template<>
+Json::Value
 getJsonForValue<scene_rdl2::rdl2::Mat4f>(const scene_rdl2::rdl2::Mat4f mat)
 {
     Json::Value arrayValue;
@@ -209,6 +231,18 @@ outputDefault(const scene_rdl2::rdl2::Attribute& attr)
     case scene_rdl2::rdl2::TYPE_VEC3D:
         return outputDefaultHelper<scene_rdl2::rdl2::Vec3d>(attr);
 
+    case scene_rdl2::rdl2::TYPE_VEC4F:
+        return outputDefaultHelper<scene_rdl2::rdl2::Vec4f>(attr);
+
+    case scene_rdl2::rdl2::TYPE_VEC4D:
+        return outputDefaultHelper<scene_rdl2::rdl2::Vec4d>(attr);
+
+    case scene_rdl2::rdl2::TYPE_MAT3F:
+        return outputDefaultHelper<scene_rdl2::rdl2::Mat3f>(attr);
+
+    case scene_rdl2::rdl2::TYPE_MAT3D:
+        return outputDefaultHelper<scene_rdl2::rdl2::Mat3d>(attr);
+
     case scene_rdl2::rdl2::TYPE_MAT4F:
         return outputDefaultHelper<scene_rdl2::rdl2::Mat4f>(attr);
 
@@ -253,6 +287,18 @@ outputDefault(const scene_rdl2::rdl2::Attribute& attr)
 
     case scene_rdl2::rdl2::TYPE_VEC3D_VECTOR:
         return outputDefaultVectorHelper<scene_rdl2::rdl2::Vec3dVector>(attr);
+
+    case scene_rdl2::rdl2::TYPE_VEC4F_VECTOR:
+        return outputDefaultVectorHelper<scene_rdl2::rdl2::Vec4fVector>(attr);
+
+    case scene_rdl2::rdl2::TYPE_VEC4D_VECTOR:
+        return outputDefaultVectorHelper<scene_rdl2::rdl2::Vec4dVector>(attr);
+
+    case scene_rdl2::rdl2::TYPE_MAT3F_VECTOR:
+        return outputDefaultVectorHelper<scene_rdl2::rdl2::Mat3fVector>(attr);
+
+    case scene_rdl2::rdl2::TYPE_MAT3D_VECTOR:
+        return outputDefaultVectorHelper<scene_rdl2::rdl2::Mat3dVector>(attr);
 
     case scene_rdl2::rdl2::TYPE_MAT4F_VECTOR:
         return outputDefaultVectorHelper<scene_rdl2::rdl2::Mat4fVector>(attr);

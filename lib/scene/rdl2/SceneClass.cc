@@ -31,7 +31,8 @@ SceneClass::SceneClass(SceneContext* context, const std::string& name,
     mDeclaredInterface(INTERFACE_GENERIC),
     mObjectFactory(std::move(objectFactory)),
     mAttributeStorageSize(0),
-    mComplete(false)
+    mComplete(false),
+    mOutputType(TYPE_RGB)
 {
 }
 
@@ -206,6 +207,16 @@ SceneClass::createValue(void* storage, const Attribute* attribute) const
                            attribute->getDefaultValue<Vec4d>());
             break;
 
+        case TYPE_MAT3F:
+            constructValue(&(static_cast<Mat3f*>(base)[timestep]),
+                           attribute->getDefaultValue<Mat3f>());
+            break;
+
+        case TYPE_MAT3D:
+            constructValue(&(static_cast<Mat3d*>(base)[timestep]),
+                           attribute->getDefaultValue<Mat3d>());
+            break;
+
         case TYPE_MAT4F:
             constructValue(&(static_cast<Mat4f*>(base)[timestep]),
                            attribute->getDefaultValue<Mat4f>());
@@ -289,6 +300,16 @@ SceneClass::createValue(void* storage, const Attribute* attribute) const
         case TYPE_VEC4D_VECTOR:
             constructValue(&(static_cast<Vec4dVector*>(base)[timestep]),
                            attribute->getDefaultValue<Vec4dVector>());
+            break;
+
+        case TYPE_MAT3F_VECTOR:
+            constructValue(&(static_cast<Mat3fVector*>(base)[timestep]),
+                           attribute->getDefaultValue<Mat3fVector>());
+            break;
+
+        case TYPE_MAT3D_VECTOR:
+            constructValue(&(static_cast<Mat3dVector*>(base)[timestep]),
+                           attribute->getDefaultValue<Mat3dVector>());
             break;
 
         case TYPE_MAT4F_VECTOR:
@@ -406,6 +427,14 @@ SceneClass::destroyValue(void* storage, const Attribute* attribute) const
             destructValue(&(static_cast<Vec4d*>(base)[timestep]));
             break;
 
+        case TYPE_MAT3F:
+            destructValue(&(static_cast<Mat3f*>(base)[timestep]));
+            break;
+
+        case TYPE_MAT3D:
+            destructValue(&(static_cast<Mat3d*>(base)[timestep]));
+            break;
+
         case TYPE_MAT4F:
             destructValue(&(static_cast<Mat4f*>(base)[timestep]));
             break;
@@ -472,6 +501,14 @@ SceneClass::destroyValue(void* storage, const Attribute* attribute) const
 
         case TYPE_VEC4D_VECTOR:
             destructValue(&(static_cast<Vec4dVector*>(base)[timestep]));
+            break;
+
+        case TYPE_MAT3F_VECTOR:
+            destructValue(&(static_cast<Mat3fVector*>(base)[timestep]));
+            break;
+
+        case TYPE_MAT3D_VECTOR:
+            destructValue(&(static_cast<Mat3dVector*>(base)[timestep]));
             break;
 
         case TYPE_MAT4F_VECTOR:
@@ -650,6 +687,8 @@ template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec3f
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec3d>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec4f>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec4d>(AttributeFlags);
+template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat3f>(AttributeFlags);
+template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat3d>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat4f>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat4d>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<SceneObject*>(AttributeFlags);
@@ -667,6 +706,8 @@ template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec3f
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec3dVector>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec4fVector>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Vec4dVector>(AttributeFlags);
+template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat3fVector>(AttributeFlags);
+template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat3dVector>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat4fVector>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<Mat4dVector>(AttributeFlags);
 template std::pair<uint32_t, std::size_t> SceneClass::computeOffsetAndSize<SceneObjectVector>(AttributeFlags);

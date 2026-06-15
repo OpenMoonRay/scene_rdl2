@@ -101,6 +101,8 @@ public:
     inline void deqVec3d(Vec3d &vec) { deq<Vec3d>(vec); }
     inline void deqVec4f(Vec4f &vec) { deq<Vec4f>(vec); }
     inline void deqVec4d(Vec4d &vec) { deq<Vec4d>(vec); }
+    inline void deqMat3f(Mat3f &mtx) { deq<Mat3f>(mtx); }
+    inline void deqMat3d(Mat3d &mtx) { deq<Mat3d>(mtx); }
     inline void deqMat4f(Mat4f &mtx) { deq<Mat4f>(mtx); }
     inline void deqMat4d(Mat4d &mtx) { deq<Mat4d>(mtx); }
     inline void deqSceneObject(std::string &klassName, std::string &objName);
@@ -161,6 +163,8 @@ public:
     inline void deqVec3dVector(Vec3dVector &vec)   { deqVector<Vec3dVector>(vec); }
     inline void deqVec4fVector(Vec4fVector &vec)   { deqVector<Vec4fVector>(vec); }
     inline void deqVec4dVector(Vec4dVector &vec)   { deqVector<Vec4dVector>(vec); }
+    inline void deqMat3fVector(Mat3fVector &vec)   { deqVector<Mat3fVector>(vec); }
+    inline void deqMat3dVector(Mat3dVector &vec)   { deqVector<Mat3dVector>(vec); }
     inline void deqMat4fVector(Mat4fVector &vec)   { deqVector<Mat4fVector>(vec); }
     inline void deqMat4dVector(Mat4dVector &vec)   { deqVector<Mat4dVector>(vec); }
     inline void deqSceneObjectVector(StringVector &klassNameVec, StringVector &objNameVec);
@@ -208,6 +212,8 @@ public:
     inline Vec3d         deqVec3d()        { Vec3d v; deqVec3d(v); return v; }
     inline Vec4f         deqVec4f()        { Vec4f v; deqVec4f(v); return v; }
     inline Vec4d         deqVec4d()        { Vec4d v; deqVec4d(v); return v; }
+    inline Mat3f         deqMat3f()        { Mat3f m; deqMat3f(m); return m; }
+    inline Mat3d         deqMat3d()        { Mat3d m; deqMat3d(m); return m; }
     inline Mat4f         deqMat4f()        { Mat4f m; deqMat4f(m); return m; }
     inline Mat4d         deqMat4d()        { Mat4d m; deqMat4d(m); return m; }
     inline BoolVector    deqBoolVector()   { BoolVector vec; deqBoolVector(vec); return vec; }
@@ -225,6 +231,8 @@ public:
     inline Vec3dVector   deqVec3dVector()  { Vec3dVector vec; deqVec3dVector(vec); return vec; }
     inline Vec4fVector   deqVec4fVector()  { Vec4fVector vec; deqVec4fVector(vec); return vec; }
     inline Vec4dVector   deqVec4dVector()  { Vec4dVector vec; deqVec4dVector(vec); return vec; }
+    inline Mat3fVector   deqMat3fVector()  { Mat3fVector vec; deqMat3fVector(vec); return vec; }
+    inline Mat3dVector   deqMat3dVector()  { Mat3dVector vec; deqMat3dVector(vec); return vec; }
     inline Mat4fVector   deqMat4fVector()  { Mat4fVector vec; deqMat4fVector(vec); return vec; }
     inline Mat4dVector   deqMat4dVector()  { Mat4dVector vec; deqMat4dVector(vec); return vec; }
 

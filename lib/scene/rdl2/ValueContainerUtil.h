@@ -47,7 +47,11 @@ public:
         MAT4D_VECTOR,
         SCENE_OBJECT,
         SCENE_OBJECT_VECTOR,
-        SCENE_OBJECT_INDEXABLE
+        SCENE_OBJECT_INDEXABLE,
+        MAT3F,
+        MAT3F_VECTOR,
+        MAT3D,
+        MAT3D_VECTOR
     };
 
     static std::string valueType2Str(ValueType valueType); // for debug
@@ -172,6 +176,10 @@ ValueContainerUtil::rdlType2ValueType(AttributeType rdlType)
     case scene_rdl2::rdl2::TYPE_VEC4F_VECTOR:           return ValueType::VEC4F_VECTOR;
     case scene_rdl2::rdl2::TYPE_VEC4D:                  return ValueType::VEC4D;
     case scene_rdl2::rdl2::TYPE_VEC4D_VECTOR:           return ValueType::VEC4D_VECTOR;
+    case scene_rdl2::rdl2::TYPE_MAT3F:                  return ValueType::MAT3F;
+    case scene_rdl2::rdl2::TYPE_MAT3F_VECTOR:           return ValueType::MAT3F_VECTOR;
+    case scene_rdl2::rdl2::TYPE_MAT3D:                  return ValueType::MAT3D;
+    case scene_rdl2::rdl2::TYPE_MAT3D_VECTOR:           return ValueType::MAT3D_VECTOR;
     case scene_rdl2::rdl2::TYPE_MAT4F:                  return ValueType::MAT4F;
     case scene_rdl2::rdl2::TYPE_MAT4F_VECTOR:           return ValueType::MAT4F_VECTOR;
     case scene_rdl2::rdl2::TYPE_MAT4D:                  return ValueType::MAT4D;

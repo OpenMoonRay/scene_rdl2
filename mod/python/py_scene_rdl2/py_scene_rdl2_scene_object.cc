@@ -20,6 +20,7 @@
 #include <scene_rdl2/scene/rdl2/Material.h>
 #include <scene_rdl2/scene/rdl2/Metadata.h>
 #include <scene_rdl2/scene/rdl2/Node.h>
+#include <scene_rdl2/scene/rdl2/NormalMap.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 #include <scene_rdl2/scene/rdl2/RootShader.h>
 #include <scene_rdl2/scene/rdl2/Shader.h>
@@ -45,6 +46,12 @@ namespace py_scene_rdl2
     PySceneObject_toMap(rdl2::SceneObject& self)
     {
         return self.isA<rdl2::Map>() ? static_cast<rdl2::Map*>(&self) : nullptr;
+    }
+
+    rdl2::NormalMap*
+    PySceneObject_toNormalMap(rdl2::SceneObject& self)
+    {
+        return self.isA<rdl2::NormalMap>() ? static_cast<rdl2::NormalMap*>(&self) : nullptr;
     }
 
     rdl2::Metadata*
@@ -361,6 +368,12 @@ namespace py_scene_rdl2
                  bp::return_internal_reference<>(),
                  "Downcast SceneObject to scene_rdl2.Map, only if this object is of type "
                  "scene_rdl2.SceneObjectInterface.MAP (2048).")
+
+            .def("toNormalMap",
+                 &PySceneObject_toNormalMap,
+                 bp::return_internal_reference<>(),
+                 "Downcast SceneObject to scene_rdl2.NormalMap, only if this object is of type "
+                 "scene_rdl2.SceneObjectInterface.NORMALMAP (67108864).")
 
             .def("toMetadata",
                  &PySceneObject_toMetadata,

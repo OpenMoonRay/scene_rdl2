@@ -43,6 +43,7 @@ target_sources(${component}
         py_scene_rdl2_metadata.cc
         py_scene_rdl2_misc.cc
         py_scene_rdl2_node.cc
+        py_scene_rdl2_normalmap.cc
         py_scene_rdl2_proxies.cc
         py_scene_rdl2_render_output.cc
         py_scene_rdl2_scene_class.cc

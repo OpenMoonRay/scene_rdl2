@@ -7,6 +7,7 @@
 #include <scene_rdl2/common/math/Vec2.h>
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/math/Vec4.h>
+#include <scene_rdl2/common/math/Mat3.h>
 #include <scene_rdl2/common/math/Mat4.h>
 
 #include <deque>
@@ -30,6 +31,8 @@ using Vec3f = math::Vec3<float>;
 using Vec3d = math::Vec3<double>;
 using Vec4f = math::Vec4<float>;
 using Vec4d = math::Vec4<double>;
+using Mat3f = math::Mat3<math::Vec3<float>>;
+using Mat3d = math::Mat3<math::Vec3<double>>;
 using Mat4f = math::Mat4<math::Vec4<float>>;
 using Mat4d = math::Mat4<math::Vec4<double>>;
 
@@ -48,6 +51,8 @@ using Vec3fVector = std::vector<Vec3f>;
 using Vec3dVector = std::vector<Vec3d>;
 using Vec4fVector = std::vector<Vec4f>;
 using Vec4dVector = std::vector<Vec4d>;
+using Mat3fVector = std::vector<Mat3f>;
+using Mat3dVector = std::vector<Mat3d>;
 using Mat4fVector = std::vector<Mat4f>;
 using Mat4dVector = std::vector<Mat4d>;
 
@@ -88,6 +93,10 @@ public:
         MAT4F_VECTOR,
         MAT4D,
         MAT4D_VECTOR,
+        MAT3F,
+        MAT3F_VECTOR,
+        MAT3D,
+        MAT3D_VECTOR
     };
 
     static std::string valueType2Str(ValueType valueType); // for debug

@@ -117,6 +117,8 @@ vectorSize(const SceneObject& so, const Attribute& attr)
     case TYPE_VEC3D_VECTOR:           return so.get(AttributeKey<Vec3dVector>(attr)).size();
     case TYPE_VEC4F_VECTOR:           return so.get(AttributeKey<Vec4fVector>(attr)).size();
     case TYPE_VEC4D_VECTOR:           return so.get(AttributeKey<Vec4dVector>(attr)).size();
+    case TYPE_MAT3F_VECTOR:           return so.get(AttributeKey<Mat3fVector>(attr)).size();
+    case TYPE_MAT3D_VECTOR:           return so.get(AttributeKey<Mat3dVector>(attr)).size();
     case TYPE_MAT4F_VECTOR:           return so.get(AttributeKey<Mat4fVector>(attr)).size();
     case TYPE_MAT4D_VECTOR:           return so.get(AttributeKey<Mat4dVector>(attr)).size();
     case TYPE_SCENE_OBJECT_VECTOR:    return so.get(AttributeKey<SceneObjectVector>(attr)).size();

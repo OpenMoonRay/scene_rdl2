@@ -506,6 +506,14 @@ BinaryReader::unpackValue(ValueContainerDeq &vContainerDeq,
         Vec4d val; vContainerDeq.deqVec4d(val);
         sceneObject.set(keyGen<Vec4d>(transientEncoding, attributeId, attributeName, sceneClass), val, timestep);
     } break;
+    case ValueContainerUtil::ValueType::MAT3F : {
+        Mat3f val; vContainerDeq.deqMat3f(val);
+        sceneObject.set(keyGen<Mat3f>(transientEncoding, attributeId, attributeName, sceneClass), val, timestep);
+    } break;
+    case ValueContainerUtil::ValueType::MAT3D : {
+        Mat3d val; vContainerDeq.deqMat3d(val);
+        sceneObject.set(keyGen<Mat3d>(transientEncoding, attributeId, attributeName, sceneClass), val, timestep);
+    } break;
     case ValueContainerUtil::ValueType::MAT4F : {
         Mat4f val; vContainerDeq.deqMat4f(val);
         sceneObject.set(keyGen<Mat4f>(transientEncoding, attributeId, attributeName, sceneClass), val, timestep);
@@ -582,6 +590,14 @@ BinaryReader::unpackValue(ValueContainerDeq &vContainerDeq,
     case ValueContainerUtil::ValueType::VEC4D_VECTOR : {
         Vec4dVector vec; vContainerDeq.deqVec4dVector(vec);
         sceneObject.set(keyGen<Vec4dVector>(transientEncoding, attributeId, attributeName, sceneClass), vec, timestep);
+    } break;
+    case ValueContainerUtil::ValueType::MAT3F_VECTOR : {
+        Mat3fVector vec; vContainerDeq.deqMat3fVector(vec);
+        sceneObject.set(keyGen<Mat3fVector>(transientEncoding, attributeId, attributeName, sceneClass), vec, timestep);
+    } break;
+    case ValueContainerUtil::ValueType::MAT3D_VECTOR : {
+        Mat3dVector vec; vContainerDeq.deqMat3dVector(vec);
+        sceneObject.set(keyGen<Mat3dVector>(transientEncoding, attributeId, attributeName, sceneClass), vec, timestep);
     } break;
     case ValueContainerUtil::ValueType::MAT4F_VECTOR : {
         Mat4fVector vec; vContainerDeq.deqMat4fVector(vec);

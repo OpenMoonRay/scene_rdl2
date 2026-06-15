@@ -29,7 +29,7 @@ namespace py_scene_rdl2
         // Function called exactly once, no need for static const string here.
         const std::string proxyDocstring =
              "Displacement, CameraProxy, EnvMapProxy, GeometryProxy, LightProxy, MapProxy, "
-             "MaterialProxy, and SceneObjectProxy define proxy classes for objects of each "
+             "MaterialProxy, NormalMapProxy, and SceneObjectProxy define proxy classes for objects of each "
              "customization point in RDL2. \n"
              "\n"
              "Effectively these objects will invoke the proper chain of constructors and "
@@ -67,6 +67,7 @@ namespace py_scene_rdl2
         registerProxyPyBinding<rdl2::GeometryProxy, rdl2::Geometry>("Geometry");
         registerProxyPyBinding<rdl2::LightProxy, rdl2::Light>("Light");
         registerProxyPyBinding<rdl2::MapProxy, rdl2::Map>("Map");
+        registerProxyPyBinding<rdl2::NormalMapProxy, rdl2::NormalMap>("NormalMap");
         registerProxyPyBinding<rdl2::MaterialProxy, rdl2::Material>("Material");
         registerProxyPyBinding<rdl2::DwaBaseLayerableProxy, rdl2::Material>("DwaBaseLayerable");
         registerProxyPyBinding<rdl2::DisplacementProxy, rdl2::Displacement>("Displacement");

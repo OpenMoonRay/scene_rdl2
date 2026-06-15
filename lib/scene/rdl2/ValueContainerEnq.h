@@ -99,6 +99,8 @@ public:
     inline void enqVec3d(const Vec3d &vec) { enq<Vec3d>(vec); }
     inline void enqVec4f(const Vec4f &vec) { enq<Vec4f>(vec); }
     inline void enqVec4d(const Vec4d &vec) { enq<Vec4d>(vec); }
+    inline void enqMat3f(const Mat3f &mtx) { enq<Mat3f>(mtx); }
+    inline void enqMat3d(const Mat3d &mtx) { enq<Mat3d>(mtx); }
     inline void enqMat4f(const Mat4f &mtx) { enq<Mat4f>(mtx); }
     inline void enqMat4d(const Mat4d &mtx) { enq<Mat4d>(mtx); }
     inline void enqSceneObject(const SceneObject *obj);
@@ -143,6 +145,8 @@ public:
     inline void enqVec3dVector(const Vec3dVector &vec)   { enqVector<Vec3dVector>(vec); }
     inline void enqVec4fVector(const Vec4fVector &vec)   { enqVector<Vec4fVector>(vec); }
     inline void enqVec4dVector(const Vec4dVector &vec)   { enqVector<Vec4dVector>(vec); }
+    inline void enqMat3fVector(const Mat3fVector &vec)   { enqVector<Mat3fVector>(vec); }
+    inline void enqMat3dVector(const Mat3dVector &vec)   { enqVector<Mat3dVector>(vec); }
     inline void enqMat4fVector(const Mat4fVector &vec)   { enqVector<Mat4fVector>(vec); }
     inline void enqMat4dVector(const Mat4dVector &vec)   { enqVector<Mat4dVector>(vec); }
     inline void enqSceneObjectVector(const SceneObjectVector &vec);

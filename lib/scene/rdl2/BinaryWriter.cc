@@ -333,6 +333,14 @@ BinaryWriter::packValue(const SceneObject& sObj, const Attribute* attr, int time
         vContainerEnq.enqVec4d(sObj.get(AttributeKey<Vec4d>(*attr),
                                         static_cast<AttributeTimestep>(timeStep)));
         break;
+    case TYPE_MAT3F:
+        vContainerEnq.enqMat3f(sObj.get(AttributeKey<Mat3f>(*attr),
+                                        static_cast<AttributeTimestep>(timeStep)));
+        break;
+    case TYPE_MAT3D:
+        vContainerEnq.enqMat3d(sObj.get(AttributeKey<Mat3d>(*attr),
+                                        static_cast<AttributeTimestep>(timeStep)));
+        break;
     case TYPE_MAT4F:
         vContainerEnq.enqMat4f(sObj.get(AttributeKey<Mat4f>(*attr),
                                         static_cast<AttributeTimestep>(timeStep)));
@@ -402,6 +410,14 @@ BinaryWriter::packValue(const SceneObject& sObj, const Attribute* attr, int time
         break;
     case TYPE_VEC4D_VECTOR:
         vContainerEnq.enqVec4dVector(sObj.get(AttributeKey<Vec4dVector>(*attr),
+                                              static_cast<AttributeTimestep>(timeStep)));
+        break;
+    case TYPE_MAT3F_VECTOR:
+        vContainerEnq.enqMat3fVector(sObj.get(AttributeKey<Mat3fVector>(*attr),
+                                              static_cast<AttributeTimestep>(timeStep)));
+        break;
+    case TYPE_MAT3D_VECTOR:
+        vContainerEnq.enqMat3dVector(sObj.get(AttributeKey<Mat3dVector>(*attr),
                                               static_cast<AttributeTimestep>(timeStep)));
         break;
     case TYPE_MAT4F_VECTOR:
@@ -522,6 +538,12 @@ BinaryWriter::showValue(const SceneObject &sObj, const Attribute *attr, int time
     case TYPE_VEC4D:
         ostr << "vec4d:" << sObj.get(AttributeKey<Vec4d>(*attr), static_cast<AttributeTimestep>(timeStep));
         break;
+    case TYPE_MAT3F:
+        ostr << "mat3f:" << sObj.get(AttributeKey<Mat3f>(*attr), static_cast<AttributeTimestep>(timeStep));
+        break;
+    case TYPE_MAT3D:
+        ostr << "mat3d:" << sObj.get(AttributeKey<Mat3d>(*attr), static_cast<AttributeTimestep>(timeStep));
+        break;
     case TYPE_MAT4F:
         ostr << "mat4f:" << sObj.get(AttributeKey<Mat4f>(*attr), static_cast<AttributeTimestep>(timeStep));
         break;
@@ -591,6 +613,14 @@ BinaryWriter::showValue(const SceneObject &sObj, const Attribute *attr, int time
     case TYPE_VEC4D_VECTOR:
         ostr << "vec4dVec:"
              << showValueVec<Vec4dVector>(sObj.get(AttributeKey<Vec4dVector>(*attr), static_cast<AttributeTimestep>(timeStep)));
+        break;
+    case TYPE_MAT3F_VECTOR:
+        ostr << "mat3fVec:"
+             << showValueVec<Mat3fVector>(sObj.get(AttributeKey<Mat3fVector>(*attr), static_cast<AttributeTimestep>(timeStep)));
+        break;
+    case TYPE_MAT3D_VECTOR:
+        ostr << "mat3dVec:"
+             << showValueVec<Mat3dVector>(sObj.get(AttributeKey<Mat3dVector>(*attr), static_cast<AttributeTimestep>(timeStep)));
         break;
     case TYPE_MAT4F_VECTOR:
         ostr << "mat4fVec:"

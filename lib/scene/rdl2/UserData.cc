@@ -35,6 +35,10 @@ AttributeKey<String> UserData::sAttrVec3fKey;
 AttributeKey<Vec3fVector> UserData::sAttrVec3fValues0;
 AttributeKey<Vec3fVector> UserData::sAttrVec3fValues1;
 
+AttributeKey<String> UserData::sAttrMat3fKey;
+AttributeKey<Mat3fVector> UserData::sAttrMat3fValues0;
+AttributeKey<Mat3fVector> UserData::sAttrMat3fValues1;
+
 AttributeKey<String> UserData::sAttrMat4fKey;
 AttributeKey<Mat4fVector> UserData::sAttrMat4fValues0;
 AttributeKey<Mat4fVector> UserData::sAttrMat4fValues1;
@@ -126,6 +130,20 @@ UserData::declare(SceneClass& sceneClass)
     sceneClass.setMetadata(sAttrVec3fValues1, "label", "vec3f values 1");
     sceneClass.setMetadata(sAttrVec3fValues1, SceneClass::sComment,
         "vec3f type user data values for motion step 1");
+
+    sAttrMat3fKey = sceneClass.declareAttribute<String>("mat3f_key", "", { "mat3f key" });
+    sceneClass.setMetadata(sAttrMat3fKey, "label", "mat3f key");
+    sceneClass.setMetadata(sAttrMat3fKey, SceneClass::sComment,
+        "key name for mat3f type user data");
+    sAttrMat3fValues0 = sceneClass.declareAttribute<Mat3fVector>("mat3f_values_0", rdl2::FLAGS_NONE,
+        rdl2::INTERFACE_GENERIC, { "mat3f_values", "mat3f values" });
+    sceneClass.setMetadata(sAttrMat3fValues0, "label", "mat3f values 0");
+    sceneClass.setMetadata(sAttrMat3fValues0, SceneClass::sComment,
+        "mat3f type user data values for motion step 0");
+    sAttrMat3fValues1 = sceneClass.declareAttribute<Mat3fVector>("mat3f_values_1");
+    sceneClass.setMetadata(sAttrMat3fValues1, "label", "mat3f values 1");
+    sceneClass.setMetadata(sAttrMat3fValues1, SceneClass::sComment,
+        "mat3f type user data values for motion step 1");
 
     sAttrMat4fKey = sceneClass.declareAttribute<String>("mat4f_key", "", { "mat4f key" });
     sceneClass.setMetadata(sAttrMat4fKey, "label", "mat4f key");
@@ -464,6 +482,63 @@ const Vec3fVector&
 UserData::getVec3fValues1() const
 {
     return get(sAttrVec3fValues1);
+}
+
+bool
+UserData::hasMat3fData() const
+{
+    return hasMat3fData0();
+}
+
+bool
+UserData::hasMat3fData0() const
+{
+    return !get(sAttrMat3fKey).empty() && !get(sAttrMat3fValues0).empty();
+}
+
+bool
+UserData::hasMat3fData1() const
+{
+    return !get(sAttrMat3fKey).empty() && !get(sAttrMat3fValues1).empty();
+}
+
+void
+UserData::setMat3fData(const String& key, const Mat3fVector& values)
+{
+    set(sAttrMat3fKey, key);
+    set(sAttrMat3fValues0, values);
+}
+
+void
+UserData::setMat3fData(const String& key, const Mat3fVector& values0, const Mat3fVector& values1)
+{
+    set(sAttrMat3fKey, key);
+    set(sAttrMat3fValues0, values0);
+    set(sAttrMat3fValues1, values1);
+}
+
+const String&
+UserData::getMat3fKey() const
+{
+    return get(sAttrMat3fKey);
+}
+
+const Mat3fVector&
+UserData::getMat3fValues() const
+{
+    return getMat3fValues0();
+}
+
+const Mat3fVector&
+UserData::getMat3fValues0() const
+{
+    return get(sAttrMat3fValues0);
+}
+
+const Mat3fVector&
+UserData::getMat3fValues1() const
+{
+    return get(sAttrMat3fValues1);
 }
 
 bool

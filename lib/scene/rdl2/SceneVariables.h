@@ -355,6 +355,12 @@ public:
     static AttributeKey<Bool> sDebugKey;
     static AttributeKey<Bool> sInfoKey;
     static AttributeKey<Rgb> sFatalColor;
+    static AttributeKey<Bool> sFatalBool;
+    static AttributeKey<Int> sFatalInt;
+    static AttributeKey<Vec4f> sFatalVec4f;
+    static AttributeKey<Rgba> sFatalRgba;
+    static AttributeKey<Mat3f> sFatalMat3f;
+    static AttributeKey<Mat4f> sFatalMat4f;
     static AttributeKey<Vec3f> sFatalNormal;
     // The statsfile file path.
     static AttributeKey<String> sStatsFile;

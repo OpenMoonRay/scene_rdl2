@@ -46,6 +46,10 @@ ValueContainerUtil::valueType2Str(ValueType valueType)
     case ValueType::VEC4F_VECTOR :           return std::string("VEC4F_VECTOR");
     case ValueType::VEC4D :                  return std::string("VEC4D");
     case ValueType::VEC4D_VECTOR :           return std::string("VEC4D_VECTOR");
+    case ValueType::MAT3F :                  return std::string("MAT3F");
+    case ValueType::MAT3F_VECTOR :           return std::string("MAT3F_VECTOR");
+    case ValueType::MAT3D :                  return std::string("MAT3D");
+    case ValueType::MAT3D_VECTOR :           return std::string("MAT3D_VECTOR");
     case ValueType::MAT4F :                  return std::string("MAT4F");
     case ValueType::MAT4F_VECTOR :           return std::string("MAT4F_VECTOR");
     case ValueType::MAT4D :                  return std::string("MAT4D");

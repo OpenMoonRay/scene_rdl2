@@ -105,6 +105,8 @@ bool attrValCompare(const SceneObject* objA,
     case TYPE_VEC3D:                  return valCompare<Vec3d>(objA, attrA, objB, attrB);
     case TYPE_VEC4F:                  return valCompare<Vec4f>(objA, attrA, objB, attrB);
     case TYPE_VEC4D:                  return valCompare<Vec4d>(objA, attrA, objB, attrB);
+    case TYPE_MAT3F:                  return valCompare<Mat3f>(objA, attrA, objB, attrB);
+    case TYPE_MAT3D:                  return valCompare<Mat3d>(objA, attrA, objB, attrB);
     case TYPE_MAT4F:                  return valCompare<Mat4f>(objA, attrA, objB, attrB);
     case TYPE_MAT4D:                  return valCompare<Mat4d>(objA, attrA, objB, attrB);
     case TYPE_SCENE_OBJECT: 
@@ -127,6 +129,8 @@ bool attrValCompare(const SceneObject* objA,
     case TYPE_VEC3D_VECTOR:           return valCompare<Vec3dVector>(objA, attrA, objB, attrB);
     case TYPE_VEC4F_VECTOR:           return valCompare<Vec4fVector>(objA, attrA, objB, attrB);
     case TYPE_VEC4D_VECTOR:           return valCompare<Vec4dVector>(objA, attrA, objB, attrB);
+    case TYPE_MAT3F_VECTOR:           return valCompare<Mat3fVector>(objA, attrA, objB, attrB);
+    case TYPE_MAT3D_VECTOR:           return valCompare<Mat3dVector>(objA, attrA, objB, attrB);
     case TYPE_MAT4F_VECTOR:           return valCompare<Mat4fVector>(objA, attrA, objB, attrB);
     case TYPE_MAT4D_VECTOR:           return valCompare<Mat4dVector>(objA, attrA, objB, attrB);
     case TYPE_SCENE_OBJECT_VECTOR:    return refVecCompare<SceneObjectVector>(objA, attrA, objB, attrB);

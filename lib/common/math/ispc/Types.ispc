@@ -26,13 +26,25 @@ ISPC_UTIL_EXPORT_UNIFORM_STRUCT_TO_HEADER(Xform3f);
 ISPC_UTIL_EXPORT_UNIFORM_STRUCT_TO_HEADER(XformComponent3f);
 
 #pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(bool);
+#pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(int);
+#pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(float);
+#pragma ignore warning(all)
 ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Col3f);
 #pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Col4f);
+#pragma ignore warning(all)
 ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Mat3f);
+#pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Mat4f);
 #pragma ignore warning(all)
 ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Vec2f);
 #pragma ignore warning(all)
 ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Vec3f);
+#pragma ignore warning(all)
+ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Vec4f);
 #pragma ignore warning(all)
 ISPC_UTIL_EXPORT_STRUCT_TO_HEADER(Xform3f);
 

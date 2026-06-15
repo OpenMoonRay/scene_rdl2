@@ -135,6 +135,18 @@ operator<<(std::ostream& os, const rdl2::Vec4dVector& v)
 }
 
 std::ostream&
+operator<<(std::ostream& os, const rdl2::Mat3fVector& v)
+{
+    return rdl2VectorPrint(os, v);
+}
+
+std::ostream&
+operator<<(std::ostream& os, const rdl2::Mat3dVector& v)
+{
+    return rdl2VectorPrint(os, v);
+}
+
+std::ostream&
 operator<<(std::ostream& os, const rdl2::Mat4fVector& v)
 {
     return rdl2VectorPrint(os, v);
@@ -267,6 +279,14 @@ outputValue(std::ostream& os, const rdl2::SceneObject& obj,
         os << rdl2::attributeTypeName(attr.getType());
         return outputValueHelper<rdl2::Vec4d>(os, obj, attr, timestep, showComments);
 
+    case rdl2::TYPE_MAT3F:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputValueHelper<rdl2::Mat3f>(os, obj, attr, timestep, showComments);
+
+    case rdl2::TYPE_MAT3D:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputValueHelper<rdl2::Mat3d>(os, obj, attr, timestep, showComments);
+
     case rdl2::TYPE_MAT4F:
         os << rdl2::attributeTypeName(attr.getType());
         return outputValueHelper<rdl2::Mat4f>(os, obj, attr, timestep, showComments);
@@ -333,6 +353,14 @@ outputValue(std::ostream& os, const rdl2::SceneObject& obj,
     case rdl2::TYPE_VEC4D_VECTOR:
         os << rdl2::attributeTypeName(attr.getType());
         return outputValueHelper<rdl2::Vec4dVector>(os, obj, attr, timestep, showComments);
+
+    case rdl2::TYPE_MAT3F_VECTOR:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputValueHelper<rdl2::Mat3fVector>(os, obj, attr, timestep, showComments);
+
+    case rdl2::TYPE_MAT3D_VECTOR:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputValueHelper<rdl2::Mat3dVector>(os, obj, attr, timestep, showComments);
 
     case rdl2::TYPE_MAT4F_VECTOR:
         os << rdl2::attributeTypeName(attr.getType());
@@ -408,6 +436,12 @@ fetchBinding(const rdl2::SceneObject& obj, const rdl2::Attribute& attr)
     case rdl2::TYPE_VEC4D:
         return fetchBindingHelper<rdl2::Vec4d>(obj, attr);
 
+    case rdl2::TYPE_MAT3F:
+        return fetchBindingHelper<rdl2::Mat3f>(obj, attr);
+
+    case rdl2::TYPE_MAT3D:
+        return fetchBindingHelper<rdl2::Mat3d>(obj, attr);
+
     case rdl2::TYPE_MAT4F:
         return fetchBindingHelper<rdl2::Mat4f>(obj, attr);
 
@@ -458,6 +492,12 @@ fetchBinding(const rdl2::SceneObject& obj, const rdl2::Attribute& attr)
 
     case rdl2::TYPE_VEC4D_VECTOR:
         return fetchBindingHelper<rdl2::Vec4dVector>(obj, attr);
+
+    case rdl2::TYPE_MAT3F_VECTOR:
+        return fetchBindingHelper<rdl2::Mat3fVector>(obj, attr);
+
+    case rdl2::TYPE_MAT3D_VECTOR:
+        return fetchBindingHelper<rdl2::Mat3dVector>(obj, attr);
 
     case rdl2::TYPE_MAT4F_VECTOR:
         return fetchBindingHelper<rdl2::Mat4fVector>(obj, attr);
@@ -544,6 +584,14 @@ outputDefault(std::ostream& os, const rdl2::Attribute& attr)
         os << rdl2::attributeTypeName(attr.getType());
         return outputDefaultHelper<rdl2::Vec4d>(os, attr);
 
+    case rdl2::TYPE_MAT3F:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputDefaultHelper<rdl2::Mat3f>(os, attr);
+
+    case rdl2::TYPE_MAT3D:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputDefaultHelper<rdl2::Mat3d>(os, attr);
+
     case rdl2::TYPE_MAT4F:
         os << rdl2::attributeTypeName(attr.getType());
         return outputDefaultHelper<rdl2::Mat4f>(os, attr);
@@ -610,6 +658,14 @@ outputDefault(std::ostream& os, const rdl2::Attribute& attr)
     case rdl2::TYPE_VEC4D_VECTOR:
         os << rdl2::attributeTypeName(attr.getType());
         return outputDefaultHelper<rdl2::Vec4dVector>(os, attr);
+
+    case rdl2::TYPE_MAT3F_VECTOR:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputDefaultHelper<rdl2::Mat3fVector>(os, attr);
+
+    case rdl2::TYPE_MAT3D_VECTOR:
+        os << rdl2::attributeTypeName(attr.getType());
+        return outputDefaultHelper<rdl2::Mat3dVector>(os, attr);
 
     case rdl2::TYPE_MAT4F_VECTOR:
         os << rdl2::attributeTypeName(attr.getType());

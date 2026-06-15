@@ -148,6 +148,12 @@ AttributeKey<SceneObject*> SceneVariables::sPrimaryAov;
 AttributeKey<Bool>   SceneVariables::sDebugKey;
 AttributeKey<Bool>   SceneVariables::sInfoKey;
 AttributeKey<Rgb>    SceneVariables::sFatalColor;
+AttributeKey<Bool>   SceneVariables::sFatalBool;
+AttributeKey<Int>    SceneVariables::sFatalInt;
+AttributeKey<Vec4f>  SceneVariables::sFatalVec4f;
+AttributeKey<Rgba>   SceneVariables::sFatalRgba;
+AttributeKey<Mat3f>  SceneVariables::sFatalMat3f;
+AttributeKey<Mat4f>  SceneVariables::sFatalMat4f;
 AttributeKey<String> SceneVariables::sStatsFile;
 AttributeKey<Bool>   SceneVariables::sAthenaDebug;
 
@@ -1051,6 +1057,48 @@ SceneObjectInterface SceneVariables::declare(SceneClass& sceneClass)
     sceneClass.setMetadata(sFatalColor,
         SceneClass::sComment,
         "The color to use for materials or map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalBool = sceneClass.declareAttribute<Bool>("fatal_bool", false, {"fatal bool"});
+    sceneClass.setMetadata(sFatalBool, "label", "fatal bool");
+    sceneClass.setMetadata(sFatalBool,
+        SceneClass::sComment,
+        "The bool to use for materialx map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalInt = sceneClass.declareAttribute<Int>("fatal_int", 0, {"fatal int"});
+    sceneClass.setMetadata(sFatalInt, "label", "fatal int");
+    sceneClass.setMetadata(sFatalInt,
+        SceneClass::sComment,
+        "The int to use for materialx map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalVec4f = sceneClass.declareAttribute<Vec4f>("fatal_vec4f", Vec4f(0.0f, 0.0f, 0.0f, 0.0f), {"fatal vec4f"});
+    sceneClass.setMetadata(sFatalVec4f, "label", "fatal vec4f");
+    sceneClass.setMetadata(sFatalVec4f,
+        SceneClass::sComment,
+        "The vec4f to use for materialx map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalRgba = sceneClass.declareAttribute<Rgba>("fatal_rgba", Rgba(1.0f, 0.0f, 1.0f, 1.0f), {"fatal rgba"});
+    sceneClass.setMetadata(sFatalRgba, "label", "fatal rgba");
+    sceneClass.setMetadata(sFatalRgba,
+        SceneClass::sComment,
+        "The rgba to use for materialx map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalMat3f = sceneClass.declareAttribute<Mat3f>("fatal_mat3f", Mat3f(1.0f,0.0f,0.0f,0.0f,1.0f,0.0f,0.0f,0.0f,1.0f), {"fatal mat3f"});
+    sceneClass.setMetadata(sFatalMat3f, "label", "fatal mat3f");
+    sceneClass.setMetadata(sFatalMat3f,
+        SceneClass::sComment,
+        "The mat3f to use for materialx map shaders that are unable to execute shading, "
+        "usually due to incomplete initialization.");
+
+    sFatalMat4f = sceneClass.declareAttribute<Mat4f>("fatal_mat4f", Mat4f(1.0f,0.0f,0.0f,0.0f, 0.0f,1.0f,0.0f,0.0f, 0.0f,0.0f,1.0f,0.0f, 0.0f,0.0f,0.0f,1.0f), {"fatal mat4f"});
+    sceneClass.setMetadata(sFatalMat4f, "label", "fatal mat4f");
+    sceneClass.setMetadata(sFatalMat4f,
+        SceneClass::sComment,
+        "The mat4f to use for materialx map shaders that are unable to execute shading, "
         "usually due to incomplete initialization.");
 
     sStatsFile = sceneClass.declareAttribute<String>("stats_file", "", {"stats file"});

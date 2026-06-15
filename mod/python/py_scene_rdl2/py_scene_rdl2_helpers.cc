@@ -22,6 +22,7 @@
 #include <scene_rdl2/scene/rdl2/Material.h>
 #include <scene_rdl2/scene/rdl2/Metadata.h>
 #include <scene_rdl2/scene/rdl2/Node.h>
+#include <scene_rdl2/scene/rdl2/NormalMap.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 #include <scene_rdl2/scene/rdl2/RootShader.h>
 #include <scene_rdl2/scene/rdl2/Shader.h>
@@ -102,6 +103,9 @@ getSceneObjectTypeName(scene_rdl2::rdl2::SceneObject* sceneObject)
         if (sceneObject->isA<scene_rdl2::rdl2::Map>()) {
             oss << " | MAP";
         }
+        else if (sceneObject->isA<scene_rdl2::rdl2::NormalMap>()) {
+            oss << " | NORMALMAP";
+        }
         else if (sceneObject->isA<scene_rdl2::rdl2::RootShader>()) {
             oss << " | ROOTSHADER";
 
@@ -177,6 +181,12 @@ getAttributeValueByName(scene_rdl2::rdl2::SceneObject& sceneObject, const std::s
     else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC4D)) {
         return extractAttrValueAsPyObj<scene_rdl2::rdl2::Vec4d>(sceneObject, sc, attrName);
     }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT3F)) {
+        return extractAttrValueAsPyObj<scene_rdl2::rdl2::Mat3f>(sceneObject, sc, attrName);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT3D)) {
+        return extractAttrValueAsPyObj<scene_rdl2::rdl2::Mat3d>(sceneObject, sc, attrName);
+    }
     else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT4F)) {
         return extractAttrValueAsPyObj<scene_rdl2::rdl2::Mat4f>(sceneObject, sc, attrName);
     }
@@ -236,6 +246,12 @@ getAttributeValueByName(scene_rdl2::rdl2::SceneObject& sceneObject, const std::s
     }
     else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_VEC4D_VECTOR)) {
         return extractVectorAttrValueAsPyObj<scene_rdl2::rdl2::Vec4d>(sceneObject, sc, attrName);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT3F_VECTOR)) {
+        return extractVectorAttrValueAsPyObj<scene_rdl2::rdl2::Mat3f>(sceneObject, sc, attrName);
+    }
+    else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT3D_VECTOR)) {
+        return extractVectorAttrValueAsPyObj<scene_rdl2::rdl2::Mat3d>(sceneObject, sc, attrName);
     }
     else if (checkType(attr, scene_rdl2::rdl2::AttributeType::TYPE_MAT4F_VECTOR)) {
         return extractVectorAttrValueAsPyObj<scene_rdl2::rdl2::Mat4f>(sceneObject, sc, attrName);
@@ -387,6 +403,12 @@ getAttrTypeName(scene_rdl2::rdl2::AttributeType attrType)
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_VEC4D) {
         return { "Vec4d" };
     }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3F) {
+        return { "Mat3f" };
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3D) {
+        return { "Mat3d" };
+    }
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT4F) {
         return { "Mat4f" };
     }
@@ -439,6 +461,12 @@ getAttrTypeName(scene_rdl2::rdl2::AttributeType attrType)
     }
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_VEC4D_VECTOR) {
         return { "Vec4dVector" };
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3F_VECTOR) {
+        return { "Mat3fVector" };
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3D_VECTOR) {
+        return { "Mat3dVector" };
     }
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT4F_VECTOR) {
         return { "Mat4fVector" };
@@ -1134,6 +1162,20 @@ extractAndSetAttributeValue(scene_rdl2::rdl2::SceneObject& sceneObject,
                 attrName,
                 pyValue);
     }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3F) {
+        internal_setMatrixAttrValue<scene_rdl2::rdl2::Mat3f>(
+                sceneObject,
+                sc,
+                attrName,
+                pyValue);
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3D) {
+        internal_setMatrixAttrValue<scene_rdl2::rdl2::Mat3d>(
+                sceneObject,
+                sc,
+                attrName,
+                pyValue);
+    }
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT4F) {
         internal_setMatrixAttrValue<scene_rdl2::rdl2::Mat4f>(
                 sceneObject,
@@ -1252,6 +1294,20 @@ extractAndSetAttributeValue(scene_rdl2::rdl2::SceneObject& sceneObject,
     }
     else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_VEC4D_VECTOR) {
         internal_setVecVectorAttrValue<scene_rdl2::rdl2::Vec4d>(
+                sceneObject,
+                sc,
+                attrName,
+                pyValue);
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3F_VECTOR) {
+        internal_setMatrixVectorAttrValue<scene_rdl2::rdl2::Mat3f>(
+                sceneObject,
+                sc,
+                attrName,
+                pyValue);
+    }
+    else if (attrType == scene_rdl2::rdl2::AttributeType::TYPE_MAT3D_VECTOR) {
+        internal_setMatrixVectorAttrValue<scene_rdl2::rdl2::Mat3d>(
                 sceneObject,
                 sc,
                 attrName,

@@ -70,6 +70,12 @@ TestAttribute::testConstructBlurrable()
         Attribute attr("attr", TYPE_VEC3D, FLAGS_BLURRABLE, 0, 42);
     );
     CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3F, FLAGS_BLURRABLE, 0, 42);
+    );
+    CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3D, FLAGS_BLURRABLE, 0, 42);
+    );
+    CPPUNIT_ASSERT_NO_THROW(
         Attribute attr("attr", TYPE_MAT4F, FLAGS_BLURRABLE, 0, 42);
     );
     CPPUNIT_ASSERT_NO_THROW(
@@ -121,6 +127,12 @@ TestAttribute::testConstructBlurrable()
     , except::TypeError);
     CPPUNIT_ASSERT_THROW(
         Attribute attr("attr", TYPE_VEC3D_VECTOR, FLAGS_BLURRABLE, 0, 42);
+    , except::TypeError);
+    CPPUNIT_ASSERT_THROW(
+        Attribute attr("attr", TYPE_MAT3F_VECTOR, FLAGS_BLURRABLE, 0, 42);
+    , except::TypeError);
+    CPPUNIT_ASSERT_THROW(
+        Attribute attr("attr", TYPE_MAT3D_VECTOR, FLAGS_BLURRABLE, 0, 42);
     , except::TypeError);
     CPPUNIT_ASSERT_THROW(
         Attribute attr("attr", TYPE_MAT4F_VECTOR, FLAGS_BLURRABLE, 0, 42);
@@ -183,6 +195,12 @@ TestAttribute::testConstructWithDefault()
         Attribute attr("attr", TYPE_VEC4D, FLAGS_NONE, 0, 42, Vec4d(0.0, 0.0, 0.0, 0.0));
     );
     CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3F, FLAGS_NONE, 0, 42, Mat3f(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
+    );
+    CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3D, FLAGS_NONE, 0, 42, Mat3d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+    );
+    CPPUNIT_ASSERT_NO_THROW(
         Attribute attr("attr", TYPE_MAT4F, FLAGS_NONE, 0, 42, Mat4f(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
     );
     CPPUNIT_ASSERT_NO_THROW(
@@ -232,6 +250,12 @@ TestAttribute::testConstructWithDefault()
     );
     CPPUNIT_ASSERT_NO_THROW(
         Attribute attr("attr", TYPE_VEC4D_VECTOR, FLAGS_NONE, 0, 42, Vec4dVector());
+    );
+    CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3F_VECTOR, FLAGS_NONE, 0, 42, Mat3fVector());
+    );
+    CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3D_VECTOR, FLAGS_NONE, 0, 42, Mat3dVector());
     );
     CPPUNIT_ASSERT_NO_THROW(
         Attribute attr("attr", TYPE_MAT4F_VECTOR, FLAGS_NONE, 0, 42, Mat4fVector());
@@ -290,6 +314,12 @@ TestAttribute::testConstructWithDefault()
         Attribute attr("attr", TYPE_VEC4D, FLAGS_BLURRABLE, 0, 42, Vec4d(0.0, 0.0, 0.0, 0.0));
     );
     CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3F, FLAGS_BLURRABLE, 0, 42, Mat3f(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
+    );
+    CPPUNIT_ASSERT_NO_THROW(
+        Attribute attr("attr", TYPE_MAT3D, FLAGS_BLURRABLE, 0, 42, Mat3d(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+    );
+    CPPUNIT_ASSERT_NO_THROW(
         Attribute attr("attr", TYPE_MAT4F, FLAGS_BLURRABLE, 0, 42, Mat4f(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f));
     );
     CPPUNIT_ASSERT_NO_THROW(
@@ -339,6 +369,12 @@ TestAttribute::testConstructWithDefault()
     , except::TypeError);
     CPPUNIT_ASSERT_THROW(
         Attribute attr("attr", TYPE_VEC4D_VECTOR, FLAGS_BLURRABLE, 0, 42, Vec4dVector());
+    , except::TypeError);
+    CPPUNIT_ASSERT_THROW(
+        Attribute attr("attr", TYPE_MAT3F_VECTOR, FLAGS_BLURRABLE, 0, 42, Mat3fVector());
+    , except::TypeError);
+    CPPUNIT_ASSERT_THROW(
+        Attribute attr("attr", TYPE_MAT3D_VECTOR, FLAGS_BLURRABLE, 0, 42, Mat3dVector());
     , except::TypeError);
     CPPUNIT_ASSERT_THROW(
         Attribute attr("attr", TYPE_MAT4F_VECTOR, FLAGS_BLURRABLE, 0, 42, Mat4fVector());
@@ -546,6 +582,14 @@ TestAttribute::testGetDefaultValue()
     CPPUNIT_ASSERT(vec4dAttr.getDefaultValue<Vec4d>() == Vec4d(1.0, 2.0, 3.0, 4.0));
     CPPUNIT_ASSERT_THROW(vec4dAttr.getDefaultValue<Bool>(), except::TypeError);
 
+    Attribute mat3fAttr("mat3f", TYPE_MAT3F, FLAGS_NONE, 0, 42, Mat3f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f));
+    CPPUNIT_ASSERT(mat3fAttr.getDefaultValue<Mat3f>() == Mat3f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f));
+    CPPUNIT_ASSERT_THROW(mat3fAttr.getDefaultValue<Bool>(), except::TypeError);
+
+    Attribute mat3dAttr("mat3d", TYPE_MAT3D, FLAGS_NONE, 0, 42, Mat3d(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0));
+    CPPUNIT_ASSERT(mat3dAttr.getDefaultValue<Mat3d>() == Mat3d(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0));
+    CPPUNIT_ASSERT_THROW(mat3dAttr.getDefaultValue<Bool>(), except::TypeError);
+
     Attribute mat4fAttr("mat4f", TYPE_MAT4F, FLAGS_NONE, 0, 42, Mat4f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f));
     CPPUNIT_ASSERT(mat4fAttr.getDefaultValue<Mat4f>() == Mat4f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f));
     CPPUNIT_ASSERT_THROW(mat4fAttr.getDefaultValue<Bool>(), except::TypeError);
@@ -655,6 +699,20 @@ TestAttribute::testGetDefaultValue()
     Attribute vec4dVectorAttr("vec4d vector", TYPE_VEC4D_VECTOR, FLAGS_NONE, 0, 42, vec4dVec);
     CPPUNIT_ASSERT(vec4dVectorAttr.getDefaultValue<Vec4dVector>() == vec4dVec);
     CPPUNIT_ASSERT_THROW(vec4dVectorAttr.getDefaultValue<Bool>(), except::TypeError);
+
+    Mat3fVector mat3fVec;
+    mat3fVec.push_back(Mat3f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f));
+    mat3fVec.push_back(Mat3f(17.0f, 18.0f, 19.0f, 20.0f, 21.0f, 22.0f, 23.0f, 24.0f, 25.0f));
+    Attribute mat3fVectorAttr("mat3f vector", TYPE_MAT3F_VECTOR, FLAGS_NONE, 0, 42, mat3fVec);
+    CPPUNIT_ASSERT(mat3fVectorAttr.getDefaultValue<Mat3fVector>() == mat3fVec);
+    CPPUNIT_ASSERT_THROW(mat3fVectorAttr.getDefaultValue<Bool>(), except::TypeError);
+
+    Mat3dVector mat3dVec;
+    mat3dVec.push_back(Mat3d(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0));
+    mat3dVec.push_back(Mat3d(17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0, 25.0));
+    Attribute mat3dVectorAttr("mat3d vector", TYPE_MAT3D_VECTOR, FLAGS_NONE, 0, 42, mat3dVec);
+    CPPUNIT_ASSERT(mat3dVectorAttr.getDefaultValue<Mat3dVector>() == mat3dVec);
+    CPPUNIT_ASSERT_THROW(mat3dVectorAttr.getDefaultValue<Bool>(), except::TypeError);
 
     Mat4fVector mat4fVec;
     mat4fVec.push_back(Mat4f(1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f, 13.0f, 14.0f, 15.0f, 16.0f));
@@ -903,6 +961,8 @@ TestAttribute::testAttributeType()
     CPPUNIT_ASSERT(attributeType<Vec3d>() == TYPE_VEC3D);
     CPPUNIT_ASSERT(attributeType<Vec4f>() == TYPE_VEC4F);
     CPPUNIT_ASSERT(attributeType<Vec4d>() == TYPE_VEC4D);
+    CPPUNIT_ASSERT(attributeType<Mat3f>() == TYPE_MAT3F);
+    CPPUNIT_ASSERT(attributeType<Mat3d>() == TYPE_MAT3D);
     CPPUNIT_ASSERT(attributeType<Mat4f>() == TYPE_MAT4F);
     CPPUNIT_ASSERT(attributeType<Mat4d>() == TYPE_MAT4D);
     CPPUNIT_ASSERT(attributeType<SceneObject*>() == TYPE_SCENE_OBJECT);
@@ -920,6 +980,8 @@ TestAttribute::testAttributeType()
     CPPUNIT_ASSERT(attributeType<Vec3dVector>() == TYPE_VEC3D_VECTOR);
     CPPUNIT_ASSERT(attributeType<Vec4fVector>() == TYPE_VEC4F_VECTOR);
     CPPUNIT_ASSERT(attributeType<Vec4dVector>() == TYPE_VEC4D_VECTOR);
+    CPPUNIT_ASSERT(attributeType<Mat3fVector>() == TYPE_MAT3F_VECTOR);
+    CPPUNIT_ASSERT(attributeType<Mat3dVector>() == TYPE_MAT3D_VECTOR);
     CPPUNIT_ASSERT(attributeType<Mat4fVector>() == TYPE_MAT4F_VECTOR);
     CPPUNIT_ASSERT(attributeType<Mat4dVector>() == TYPE_MAT4D_VECTOR);
     CPPUNIT_ASSERT(attributeType<SceneObjectVector>() == TYPE_SCENE_OBJECT_VECTOR);

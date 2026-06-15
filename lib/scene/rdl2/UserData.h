@@ -91,6 +91,16 @@ public:
     const Vec3fVector& getVec3fValues0() const;
     const Vec3fVector& getVec3fValues1() const;
 
+    bool hasMat3fData() const;
+    bool hasMat3fData0() const;
+    bool hasMat3fData1() const;
+    void setMat3fData(const String& key, const Mat3fVector& values);
+    void setMat3fData(const String& key, const Mat3fVector& values0, const Mat3fVector& values1);
+    const String& getMat3fKey() const;
+    const Mat3fVector& getMat3fValues() const;
+    const Mat3fVector& getMat3fValues0() const;
+    const Mat3fVector& getMat3fValues1() const;
+
     bool hasMat4fData() const;
     bool hasMat4fData0() const;
     bool hasMat4fData1() const;
@@ -129,6 +139,10 @@ private:
     static AttributeKey<String> sAttrVec3fKey;
     static AttributeKey<Vec3fVector> sAttrVec3fValues0;
     static AttributeKey<Vec3fVector> sAttrVec3fValues1;
+
+    static AttributeKey<String> sAttrMat3fKey;
+    static AttributeKey<Mat3fVector> sAttrMat3fValues0;
+    static AttributeKey<Mat3fVector> sAttrMat3fValues1;
 
     static AttributeKey<String> sAttrMat4fKey;
     static AttributeKey<Mat4fVector> sAttrMat4fValues0;

@@ -105,6 +105,14 @@ Attribute::Attribute(const std::string& name, AttributeType type,
         mDefault = new Vec4d(math::zero);
         break;
 
+    case TYPE_MAT3F:
+        mDefault = new Mat3f(math::one); // Identity.
+        break;
+
+    case TYPE_MAT3D:
+        mDefault = new Mat3d(math::one); // Identity.
+        break;
+
     case TYPE_MAT4F:
         mDefault = new Mat4f(math::one); // Identity.
         break;
@@ -171,6 +179,14 @@ Attribute::Attribute(const std::string& name, AttributeType type,
 
     case TYPE_VEC4D_VECTOR:
         mDefault = new Vec4dVector;
+        break;
+
+    case TYPE_MAT3F_VECTOR:
+        mDefault = new Mat3fVector;
+        break;
+
+    case TYPE_MAT3D_VECTOR:
+        mDefault = new Mat3dVector;
         break;
 
     case TYPE_MAT4F_VECTOR:
@@ -283,6 +299,14 @@ Attribute::~Attribute()
         delete static_cast<Vec4d*>(mDefault);
         break;
 
+    case TYPE_MAT3F:
+        delete static_cast<Mat3f*>(mDefault);
+        break;
+
+    case TYPE_MAT3D:
+        delete static_cast<Mat3d*>(mDefault);
+        break;
+
     case TYPE_MAT4F:
         delete static_cast<Mat4f*>(mDefault);
         break;
@@ -351,6 +375,14 @@ Attribute::~Attribute()
         delete static_cast<Vec4dVector*>(mDefault);
         break;
 
+    case TYPE_MAT3F_VECTOR:
+        delete static_cast<Mat3fVector*>(mDefault);
+        break;
+
+    case TYPE_MAT3D_VECTOR:
+        delete static_cast<Mat3dVector*>(mDefault);
+        break;
+
     case TYPE_MAT4F_VECTOR:
         delete static_cast<Mat4fVector*>(mDefault);
         break;
@@ -382,6 +414,7 @@ Attribute::sanityCheck()
                           mType != TYPE_VEC2F && mType != TYPE_VEC2D  &&
                           mType != TYPE_VEC3F && mType != TYPE_VEC3D  &&
                           mType != TYPE_VEC4F && mType != TYPE_VEC4D  &&
+                          mType != TYPE_MAT3F && mType != TYPE_MAT3D  &&
                           mType != TYPE_MAT4F && mType != TYPE_MAT4D)) {
         std::stringstream errMsg;
         errMsg << "Attribute '" << mName << "' of type '" <<
@@ -525,6 +558,8 @@ template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags,
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec3d&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec4f&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec4d&, SceneObjectInterface, const std::vector<std::string>&);
+template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat3f&, SceneObjectInterface, const std::vector<std::string>&);
+template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat3d&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat4f&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat4d&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, SceneObject* const&, SceneObjectInterface, const std::vector<std::string>&);
@@ -542,6 +577,8 @@ template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags,
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec3dVector&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec4fVector&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Vec4dVector&, SceneObjectInterface, const std::vector<std::string>&);
+template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat3fVector&, SceneObjectInterface, const std::vector<std::string>&);
+template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat3dVector&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat4fVector&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const Mat4dVector&, SceneObjectInterface, const std::vector<std::string>&);
 template Attribute::Attribute(const std::string&, AttributeType, AttributeFlags, uint32_t, uint32_t, const SceneObjectVector&, SceneObjectInterface, const std::vector<std::string>&);
@@ -595,6 +632,8 @@ Attribute::showDefault() const
     case TYPE_VEC3D : ostr << getDefaultValue<Vec3d>(); break;
     case TYPE_VEC4F : ostr << getDefaultValue<Vec4f>(); break;
     case TYPE_VEC4D : ostr << getDefaultValue<Vec4d>(); break;
+    case TYPE_MAT3F : ostr << getDefaultValue<Mat3f>(); break;
+    case TYPE_MAT3D : ostr << getDefaultValue<Mat3d>(); break;
     case TYPE_MAT4F : ostr << getDefaultValue<Mat4f>(); break;
     case TYPE_MAT4D : ostr << getDefaultValue<Mat4d>(); break;
     case TYPE_SCENE_OBJECT : ostr << showSceneObjectPtr(getDefaultValue<SceneObject *>()); break;
@@ -612,6 +651,8 @@ Attribute::showDefault() const
     case TYPE_VEC3D_VECTOR : ostr << showVec<Vec3d>(getDefaultValue<Vec3dVector>()); break;
     case TYPE_VEC4F_VECTOR : ostr << showVec<Vec4f>(getDefaultValue<Vec4fVector>()); break;
     case TYPE_VEC4D_VECTOR : ostr << showVec<Vec4d>(getDefaultValue<Vec4dVector>()); break;
+    case TYPE_MAT3F_VECTOR : ostr << showVec<Mat3f>(getDefaultValue<Mat3fVector>()); break;
+    case TYPE_MAT3D_VECTOR : ostr << showVec<Mat3d>(getDefaultValue<Mat3dVector>()); break;
     case TYPE_MAT4F_VECTOR : ostr << showVec<Mat4f>(getDefaultValue<Mat4fVector>()); break;
     case TYPE_MAT4D_VECTOR : ostr << showVec<Mat4d>(getDefaultValue<Mat4dVector>()); break;
     case TYPE_SCENE_OBJECT_VECTOR : ostr << showScnObjVec(getDefaultValue<SceneObjectVector>()); break;
