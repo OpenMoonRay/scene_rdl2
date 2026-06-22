@@ -284,7 +284,7 @@ SceneObjectInterface SceneVariables::declare(SceneClass& sceneClass)
         SceneClass::sComment,
         "(Frames per second) Affects motion blur.");
 
-    sSceneScaleKey = sceneClass.declareAttribute<Float>("scene_scale", 0.01f, {"scene scale"});
+    sSceneScaleKey = sceneClass.declareAttribute<Float>("scene_scale", 1.0f, {"scene scale"});
     sceneClass.setMetadata(sSceneScaleKey, "label", "scene scale");
     sceneClass.setMetadata(sSceneScaleKey,
         SceneClass::sComment,
