@@ -1201,6 +1201,8 @@ namespace py_scene_rdl2
                        std::is_same<T, scene_rdl2::rdl2::Vec3d>::value        == true ||
                        std::is_same<T, scene_rdl2::rdl2::Vec4f>::value        == true ||
                        std::is_same<T, scene_rdl2::rdl2::Vec4d>::value        == true ||
+                       std::is_same<T, scene_rdl2::rdl2::Mat3f>::value        == true ||
+                       std::is_same<T, scene_rdl2::rdl2::Mat3d>::value        == true ||
                        std::is_same<T, scene_rdl2::rdl2::Mat4f>::value        == true ||
                        std::is_same<T, scene_rdl2::rdl2::Mat4d>::value        == true)
                         , "Function template registerRdl2VectorType<T> : type T not supported.");
@@ -1305,6 +1307,8 @@ namespace py_scene_rdl2
         registerRdl2VectorType<rdl2::Vec3d>("Vec3d");
         registerRdl2VectorType<rdl2::Vec4f>("Vec4f");
         registerRdl2VectorType<rdl2::Vec4d>("Vec4d");
+        registerRdl2VectorType<rdl2::Mat3f>("Mat3f");
+        registerRdl2VectorType<rdl2::Mat3d>("Mat3d");
         registerRdl2VectorType<rdl2::Mat4f>("Mat4f");
         registerRdl2VectorType<rdl2::Mat4d>("Mat4d");
 
