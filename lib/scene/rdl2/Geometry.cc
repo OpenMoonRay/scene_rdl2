@@ -86,55 +86,64 @@ Geometry::declare(SceneClass& sceneClass)
         "enable to reverse the normals in the geometry");
     sceneClass.setGroup("Geometry", sReverseNormals);
 
-    sVisibleCamera = sceneClass.declareAttribute<Bool>("visible_in_camera", true, { "visible in camera" });
+    sVisibleCamera = sceneClass.declareAttribute<Bool>("visible_in_camera", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible in camera" });
     sceneClass.setMetadata(sVisibleCamera, "label", "visible in camera");
     sceneClass.setMetadata(sVisibleCamera, SceneClass::sComment,
         "whether the geometry is visible to camera rays");
     sceneClass.setGroup("Visibility", sVisibleCamera);
 
-    sVisibleShadow = sceneClass.declareAttribute<Bool>("visible_shadow", true, { "visible shadow" });
+    sVisibleShadow = sceneClass.declareAttribute<Bool>("visible_shadow", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible shadow" });
     sceneClass.setMetadata(sVisibleShadow, "label", "visible shadow");
     sceneClass.setMetadata(sVisibleShadow, SceneClass::sComment,
         "whether the geometry casts shadows");
     sceneClass.setGroup("Visibility", sVisibleShadow);
 
-    sVisibleDiffuseReflection = sceneClass.declareAttribute<Bool>("visible_diffuse_reflection", true, { "visible diffuse reflection" });
+    sVisibleDiffuseReflection = sceneClass.declareAttribute<Bool>("visible_diffuse_reflection", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible diffuse reflection" });
     sceneClass.setMetadata(sVisibleDiffuseReflection, "label", "visible diffuse reflection");
     sceneClass.setMetadata(sVisibleDiffuseReflection, SceneClass::sComment,
         "whether the geometry is visible in diffuse reflection");
     sceneClass.setGroup("Visibility", sVisibleDiffuseReflection);
 
-    sVisibleDiffuseTransmission = sceneClass.declareAttribute<Bool>("visible_diffuse_transmission", true, { "visible diffuse transmission" });
+    sVisibleDiffuseTransmission = sceneClass.declareAttribute<Bool>("visible_diffuse_transmission", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible diffuse transmission" });
     sceneClass.setMetadata(sVisibleDiffuseTransmission, "label", "visible diffuse transmission");
     sceneClass.setMetadata(sVisibleDiffuseTransmission, SceneClass::sComment,
         "whether the geometry is visible in diffuse transmission");
     sceneClass.setGroup("Visibility", sVisibleDiffuseTransmission);
 
-    sVisibleGlossyReflection = sceneClass.declareAttribute<Bool>("visible_glossy_reflection", true, { "visible glossy reflection" });
+    sVisibleGlossyReflection = sceneClass.declareAttribute<Bool>("visible_glossy_reflection", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible glossy reflection" });
     sceneClass.setMetadata(sVisibleGlossyReflection, "label", "visible glossy reflection");
     sceneClass.setMetadata(sVisibleGlossyReflection, SceneClass::sComment,
         "whether the geometry is visible in glossy reflection.");
     sceneClass.setGroup("Visibility", sVisibleGlossyReflection);
 
-    sVisibleGlossyTransmission = sceneClass.declareAttribute<Bool>("visible_glossy_transmission", true, { "visible glossy transmission" });
+    sVisibleGlossyTransmission = sceneClass.declareAttribute<Bool>("visible_glossy_transmission", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible glossy transmission" });
     sceneClass.setMetadata(sVisibleGlossyTransmission, "label", "visible glossy transmission");
     sceneClass.setMetadata(sVisibleGlossyTransmission, SceneClass::sComment,
         "whether the geometry is visible in glossy transmission (refraction).");
     sceneClass.setGroup("Visibility", sVisibleGlossyTransmission);
 
-    sVisibleMirrorReflection = sceneClass.declareAttribute<Bool>("visible_mirror_reflection", true, { "visible mirror reflection" });
+    sVisibleMirrorReflection = sceneClass.declareAttribute<Bool>("visible_mirror_reflection", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible mirror reflection" });
     sceneClass.setMetadata(sVisibleMirrorReflection, "label", "visible mirror reflection");
     sceneClass.setMetadata(sVisibleMirrorReflection, SceneClass::sComment,
         "whether the geometry is visible in miror reflection.");
     sceneClass.setGroup("Visibility", sVisibleMirrorReflection);
 
-    sVisibleMirrorTransmission = sceneClass.declareAttribute<Bool>("visible_mirror_transmission", true, { "visible mirror transmission" });
+    sVisibleMirrorTransmission = sceneClass.declareAttribute<Bool>("visible_mirror_transmission", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible mirror transmission" });
     sceneClass.setMetadata(sVisibleMirrorTransmission, "label", "visible mirror transmission");
     sceneClass.setMetadata(sVisibleMirrorTransmission, SceneClass::sComment,
         "whether the geometry is visible in miror transmission (refraction).");
     sceneClass.setGroup("Visibility", sVisibleMirrorTransmission);
 
-    sVisiblePhase = sceneClass.declareAttribute<Bool>("visible_volume", true, { "visible volume" });
+    sVisiblePhase = sceneClass.declareAttribute<Bool>("visible_volume", true,
+        FLAGS_GEOM_RELOAD_BVH_ONLY, INTERFACE_GENERIC, { "visible volume" });
     sceneClass.setMetadata(sVisiblePhase, "label", "visible volume");
     sceneClass.setMetadata(sVisiblePhase, "comment",
         "whether the geometry is visible in indirect volume rays");

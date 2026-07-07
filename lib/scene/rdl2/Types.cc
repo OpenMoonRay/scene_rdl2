@@ -723,6 +723,7 @@ showAttributeFlags(const AttributeFlags &val)
         if (i & FLAGS_ENUMERABLE)           ostr << "ENUMERABLE ";
         if (i & FLAGS_FILENAME)             ostr << "FILENAME ";
         if (i & FLAGS_CAN_SKIP_GEOM_RELOAD) ostr << "CAN_SKIP_GEOM_RELOAD ";
+        if (i & FLAGS_GEOM_RELOAD_BVH_ONLY) ostr << "GEOM_RELOAD_BVH_ONLY ";
     }
     ostr << "}";
     return ostr.str();

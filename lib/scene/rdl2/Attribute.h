@@ -104,6 +104,11 @@ public:
     /// (generate/tessellate/construct accelerator) to reflect the changes
     finline bool updateRequiresGeomReload() const;
 
+    /// Returns true if the attribute update does not require geometry to be
+    /// regenerated/tessellated, but does still require the acceleration
+    /// structure (BVH) to be rebuilt (e.g. the visibility flags).
+    finline bool updateOnlyRequiresBVHRebuild() const;
+
     /**
      * Retrieves any metadata set on the attribute with the given string key.
      *
@@ -362,6 +367,13 @@ bool
 Attribute::updateRequiresGeomReload() const
 {
     return (mFlags & FLAGS_CAN_SKIP_GEOM_RELOAD) == 0;
+}
+
+bool
+Attribute::updateOnlyRequiresBVHRebuild() const
+{
+    return ((mFlags & FLAGS_GEOM_RELOAD_BVH_ONLY) != 0) &&
+           ((mFlags & FLAGS_CAN_SKIP_GEOM_RELOAD) == 0);
 }
 
 bool

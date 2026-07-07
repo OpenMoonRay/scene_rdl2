@@ -254,8 +254,13 @@ T convertFromString(std::string value);
  *
  * The "filename" flag indicates that this attribute represents a filename.
  *
- * The "no_geom_reload" flag indicates that an attribute update would not cause
+ * The "can_skip_geom_reload" flag indicates that an attribute update would not cause
  * geometry to regenerate/tessellate/construct accelerator
+ *
+ * The "geom_reload_bvh_only" flag indicates that an attribute update does not cause
+ * geometry to regenerate/tessellate, but does still require the acceleration
+ * structure (BVH) to be rebuilt (e.g. the per-ray-type visibility flags, which
+ * are baked into the BVH ray mask).
  */
 enum AttributeFlags
 {
@@ -264,7 +269,8 @@ enum AttributeFlags
     FLAGS_BLURRABLE      = 1 << 1,
     FLAGS_ENUMERABLE     = 1 << 2,
     FLAGS_FILENAME       = 1 << 3,
-    FLAGS_CAN_SKIP_GEOM_RELOAD = 1 << 4
+    FLAGS_CAN_SKIP_GEOM_RELOAD = 1 << 4,
+    FLAGS_GEOM_RELOAD_BVH_ONLY = 1 << 5
 };
 
 RDL2_DEFINE_BITFLAG_OPERATORS(AttributeFlags);
