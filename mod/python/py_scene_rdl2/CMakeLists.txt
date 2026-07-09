@@ -102,6 +102,22 @@ SceneRdl2_link_options(${component})
 set(python_install_dir
     python/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/${PACKAGE_NAME})
 
+# materialx_shaders needs to use the module before it gets installed so
+# make it useable in the build directory by copying the __init__.py file
+# and adding a fake scene_rdl2 directory using a symbolic link
+add_custom_command(
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
+	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2
+	COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
+	COMMAND ln -s ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py
+)
+	
+add_custom_target(
+	scene_rdl2_module ALL
+	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
+)
+
 install(TARGETS ${component} DESTINATION ${python_install_dir})
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py DESTINATION ${python_install_dir})
