@@ -18,7 +18,7 @@ find_package(Boost REQUIRED
     date_time
     chrono)
 
-add_library(${component} SHARED "")
+add_library(${component} MODULE "")
 add_library(${PROJECT_NAME}::${component} ALIAS ${component})
 
 target_sources(${component}
@@ -74,7 +74,7 @@ target_link_libraries(${component}
         ${PROJECT_NAME}::${PACKAGE_NAME}
         ${Python_LIBRARIES}
 )
-if(${Python_VERSION_MAJOR} VERSION_GREATER_EQUAL 3) 
+if(Python_FOUND AND Python_VERSION_MAJOR VERSION_GREATER_EQUAL 3)
     target_compile_definitions(${component}
         PRIVATE
             IS_PY3
@@ -91,7 +91,19 @@ else()
 endif()
 
 # Suppress prefix "lib" because Python does not allow this prefix
-set_target_properties(${component} PROPERTIES PREFIX "")
+set_target_properties(${component} PROPERTIES
+    PREFIX ""
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+)
+
+foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER "${cfg}" cfg_upper)
+    set_target_properties(${component} PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY_${cfg_upper} "${CMAKE_CURRENT_BINARY_DIR}"
+        RUNTIME_OUTPUT_DIRECTORY_${cfg_upper} "${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endforeach()
 
 # Set standard compile/link options
 SceneRdl2_cxx_compile_definitions(${component})
@@ -106,16 +118,17 @@ set(python_install_dir
 # make it useable in the build directory by copying the __init__.py file
 # and adding a fake scene_rdl2 directory using a symbolic link
 add_custom_command(
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
-	OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2
-	COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
-	COMMAND ln -s ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/__init__.py" "${CMAKE_CURRENT_BINARY_DIR}/__init__.py"
+    COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2"
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_BINARY_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/scene_rdl2"
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/__init__.py
 )
-	
+
 add_custom_target(
-	scene_rdl2_module ALL
-	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
+    scene_rdl2_module ALL
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/__init__.py
 )
 
 install(TARGETS ${component} DESTINATION ${python_install_dir})
