@@ -37,7 +37,9 @@ class LayerAssignment:
                  volumeName,
                  light_set_name,
                  shadow_set_name,
-                 light_filter_set_name):
+                 light_filter_set_name,
+                 part=None,
+                 srs_name=None):
         self.assignment_line = assignment_line
         self.geo_type = geo_type
         self.geo_name = geo_name
@@ -50,6 +52,17 @@ class LayerAssignment:
         self.light_set_name = light_set_name
         self.shadow_set_name = shadow_set_name
         self.light_filter_set_name = light_filter_set_name
+        self.part = part
+        self.srs_name = srs_name
+
+    def grouping_key(self):
+        """Key used to identify assignments that differ only in part name."""
+        return (self.geo_type, self.geo_name,
+                self.material_type, self.material_name,
+                self.displacement_type, self.displacement_name,
+                self.volume_type, self.volume_name,
+                self.light_set_name, self.shadow_set_name,
+                self.light_filter_set_name, self.srs_name)
 
 class RdlParameterDef:
     def __init__(self,
@@ -445,6 +458,9 @@ class RdlaFilter:
                 elif type_name == "Vec2fVector":
                     v = self._to_list(item)
                     items.append("Vec2(%s, %s)" % (self._fmt(v[0]), self._fmt(v[1])))
+                elif type_name in ("Vec4fVector", "Vec4dVector"):
+                    v = self._to_list(item)
+                    items.append("Vec4(%s, %s, %s, %s)" % (self._fmt(v[0]), self._fmt(v[1]), self._fmt(v[2]), self._fmt(v[3])))
                 elif type_name in ("Mat4dVector", "Mat4fVector"):
                     v = self._to_list(item)
                     vals = ", ".join(self._fmt(x) for x in v)
@@ -838,6 +854,13 @@ class RdlaFilter:
         self.output_handle.write('-- Layer\n')
         self.output_handle.write('%s("%s") {\n' % (layer._type, layer.name))
         num_assignments = len(self.layer_assignments)
+
+        # Collect matching assignments in order, then group by everything
+        # except the part name so that assignments sharing the same
+        # geometry/material/sets can be written as a single entry with an
+        # array of parts.
+        seen_keys = {}   # key -> index into ordered_groups
+        ordered_groups = []  # list of [LayerAssignment, ...]
         for asset_name in self.asset_names:
             for i, l in enumerate(self.layer_assignments):
 
@@ -849,14 +872,50 @@ class RdlaFilter:
                     if i < (num_assignments / 2):
                         continue
 
-                if re.search(asset_name, l.geo_name):
-                    line = l.assignment_line
-                    if self.options.replacematerials:
-                        line = self.replace_layer_material(line)
-                    if self.options.usevariablenames:
-                        line = self.replace_with_variables(line)
-                    self.output_handle.write(line)
-                    self.output_handle.write('\n')
+                if not re.search(asset_name, l.geo_name):
+                    continue
+
+                if self.is_geo_filtered_out(l.geo_type):
+                    continue
+
+                if self.is_asset_deleted(l.geo_name):
+                    continue
+
+                key = l.grouping_key()
+                if key not in seen_keys:
+                    seen_keys[key] = len(ordered_groups)
+                    ordered_groups.append([l])
+                else:
+                    group = ordered_groups[seen_keys[key]]
+                    if l not in group:
+                        group.append(l)
+
+        for group in ordered_groups:
+            first = group[0]
+            if len(group) == 1:
+                lines_to_write = [first.assignment_line]
+            else:
+                # Merge parts into an inline array: { "p1", "p2", ... }
+                parts_array = '{ %s }' % ', '.join(
+                    '""' if a.part is None else '"%s"' % a.part
+                    for a in group)
+
+                # Replace the 2nd element (part) robustly regardless of spacing; if it
+                # doesn't match, fall back to writing separate lines to avoid data loss.
+                m = re.match(r'^(\s*\{\s*[^,]+\s*,\s*)("[^"]*"|""|\{[^}]*\})(\s*,.*)$', first.assignment_line)
+                if m:
+                    lines_to_write = [m.group(1) + parts_array + m.group(3)]
+                else:
+                    lines_to_write = [a.assignment_line for a in group]
+
+            for line in lines_to_write:
+                if self.options.replacematerials:
+                    line = self.replace_layer_material(line)
+                if self.options.usevariablenames:
+                    line = self.replace_with_variables(line)
+                self.output_handle.write(line)
+                self.output_handle.write('\n')
+
         self.output_handle.write('}\n')
         self.output_handle.write('\n')
 
@@ -888,6 +947,12 @@ class RdlaFilter:
                 if not re.search(asset_name, l.geo_name):
                     continue
 
+                if self.is_geo_filtered_out(l.geo_type):
+                    continue
+
+                if self.is_asset_deleted(l.geo_name):
+                    continue
+
                 o = self.get_scene_object("LightSet", l.light_set_name)
                 if o: self.light_set_list.add(o)
 
@@ -908,6 +973,64 @@ class RdlaFilter:
 
                 o = self.get_scene_object(l.volume_type, l.volume_name)
                 if o: self.volume_list.add(o)
+
+        if not self.options.skiplights:
+            # For any MeshLights in the kept light sets, collect their geometry into
+            # geom_list so it also appears in the GeometrySet.  Only light sets
+            # referenced by kept assignments (already in light_set_list) are
+            # considered; this also ensures that lights in non-kept light sets are
+            # not written.
+            for light_set in list(self.light_set_list):
+                for geo in self.get_mesh_light_geometry(light_set):
+                    self.geom_list.add(geo)
+
+    def is_asset_deleted(self, geo_name):
+        """Return True if geo_name matches any --assets-to-delete pattern."""
+        return any(re.search(p, geo_name) for p in self.delete_names)
+
+    def is_geo_filtered_out(self, geo_type):
+        """Return True if the assignment should be skipped based on geometry class filters.
+        --exclude-geometry-classes: skip if geo_type exactly matches any listed class.
+        --include-geometry-classes: skip if geo_type exactly matches NONE of the listed classes."""
+        if self.exclude_names:
+            return geo_type in self.exclude_names
+        if self.include_names:
+            return geo_type not in self.include_names
+        return False
+
+    def get_mesh_light_geometry(self, light_set_obj):
+        """Return geometry SceneObjects referenced by MeshLights in the given LightSet."""
+        result = []
+        if not (hasattr(light_set_obj, 'api_obj') and light_set_obj.api_obj):
+            return result
+        try:
+            api_obj = light_set_obj.api_obj
+            scene_class = api_obj.getSceneClass()
+            for attr_name in scene_class.getAttributeNames():
+                attr = scene_class.getAttribute(attr_name)
+                if attr.getTypeName() not in ("SceneObjectVector", "SceneObjectIndexable"):
+                    continue
+                value = api_obj.get(attr_name)
+                if value is None:
+                    continue
+                items = list(value.toList()) if hasattr(value, 'toList') else list(value)
+                for item in items:
+                    if item is None or not hasattr(item, 'getSceneClass'):
+                        continue
+                    if 'MeshLight' not in item.getSceneClass().getName():
+                        continue
+                    try:
+                        geo = item.get("geometry")
+                        if geo is not None and hasattr(geo, 'getSceneClass'):
+                            geo_obj = self.get_scene_object(
+                                geo.getSceneClass().getName(), geo.getName())
+                            if geo_obj:
+                                result.append(geo_obj)
+                    except:
+                        pass
+        except:
+            pass
+        return result
 
     def get_scene_variables(self):
         if "SceneVariables" in self.scene_objects:
@@ -1342,6 +1465,7 @@ class RdlaFilter:
             light_set_name = None
             shadow_set_name = None
             light_filter_set_name = None
+            srs_name = None
 
             for ac in match.group(1).split(','):
                 (object_type, object_name) = get_type_and_name(ac, self.component_regex)
@@ -1367,6 +1491,17 @@ class RdlaFilter:
                     elif 'ND_standard_surface_surfaceshader' in object_type or 'Material' in object_type or 'Surface' in object_type:
                         material_type = object_type
                         material_name = object_name
+                    elif object_type == 'ShadowReceiverSet':
+                        srs_name = object_name
+
+            # Extract the bare quoted part string (second element, not a Type("name") ref)
+            part = None
+            for ac in match.group(1).split(','):
+                ac = ac.strip()
+                m = re.match(r'^"([^"]*)"$', ac)
+                if m:
+                    part = m.group(1)
+                    break
 
             layer_assignment = LayerAssignment(assignment_line,
                                                geo_type,
@@ -1379,7 +1514,9 @@ class RdlaFilter:
                                                volumeName,
                                                light_set_name,
                                                shadow_set_name,
-                                               light_filter_set_name)
+                                               light_filter_set_name,
+                                               part=part,
+                                               srs_name=srs_name)
             self.layer_assignments.append(layer_assignment)
 
     def _get_layer_assignments_from_api(self, layer):
@@ -1450,6 +1587,7 @@ class RdlaFilter:
             light_set_name = obj_info(ls_obj)[1]
             shadow_set_name = obj_info(ss_obj)[1]
             light_filter_set_name = obj_info(lfs_obj)[1]
+            srs_name = obj_info(srs_obj)[1]
 
             part_str = '"%s"' % str(part) if part else '""'
 
@@ -1476,7 +1614,9 @@ class RdlaFilter:
                                                volumeName,
                                                light_set_name,
                                                shadow_set_name,
-                                               light_filter_set_name)
+                                               light_filter_set_name,
+                                               part=part,
+                                               srs_name=srs_name)
             self.layer_assignments.append(layer_assignment)
 
 
@@ -1527,7 +1667,40 @@ class RdlaFilter:
                                "geometry objects assigned in the Layer of the " +
                                "input rdla file.  The full path can be used, " +
                                "just a portion of it, or a regular expression " +
-                               "which could match multiple objects.\n\n")
+                               "which could match multiple objects.  " +
+                               "Mutually exclusive with --assets-to-delete and --binary-split.\n\n")
+
+        parser.add_option("--assets-to-delete",
+                          dest="assetstodelete",
+                          help="Space separated list of asset names to remove.  " +
+                               "Use quotes for multiple assets.  " +
+                               "The asset names should be the names of the " +
+                               "geometry objects assigned in the Layer of the " +
+                               "input rdla file.  The full path can be used, " +
+                               "just a portion of it, or a regular expression " +
+                               "which could match multiple objects.  " +
+                               "All other assets are kept.  " +
+                               "Mutually exclusive with --assets-to-keep and --binary-split.\n\n")
+
+        parser.add_option("--exclude-geometry-classes",
+                          dest="excludegeometryclasses",
+                          help="Space separated list of geometry class types to exclude.  " +
+                               "Use quotes for multiple entries.  " +
+                               "Matches the exact geometry class name (e.g. AbcGeometry, " +
+                               "FurDeformGeometry).  All layer assignments whose geometry " +
+                               "is of a matching class, along with their geometry nodes " +
+                               "and any materials or maps used exclusively by those " +
+                               "assignments, are removed from the output.  " +
+                               "Mutually exclusive with --include-geometry-classes.\n\n")
+
+        parser.add_option("--include-geometry-classes",
+                          dest="includegeometryclasses",
+                          help="Space separated list of geometry class types to include.  " +
+                               "Use quotes for multiple entries.  " +
+                               "Only layer assignments whose geometry class exactly matches " +
+                               "one of the listed names are kept; all others are excluded " +
+                               "(e.g. AbcGeometry, FurDeformGeometry).  " +
+                               "Mutually exclusive with --exclude-geometry-classes.\n\n")
 
         parser.add_option("--binary-split",
                           dest="binarysplit",
@@ -1632,7 +1805,19 @@ class RdlaFilter:
 
 
         if self.options.assetstokeep and self.options.binarysplit != -1:
-            parser.error("Must use either --assetstokeep or --binarysplit but not both")
+            parser.error("Must use either --assets-to-keep or --binary-split but not both")
+            return False
+
+        if self.options.assetstodelete and self.options.binarysplit != -1:
+            parser.error("Must use either --assets-to-delete or --binary-split but not both")
+            return False
+
+        if self.options.assetstokeep and self.options.assetstodelete:
+            parser.error("Must use either --assets-to-keep or --assets-to-delete but not both")
+            return False
+
+        if self.options.excludegeometryclasses and self.options.includegeometryclasses:
+            parser.error("Must use either --exclude-geometry-classes or --include-geometry-classes but not both")
             return False
 
         if self.options.minimal:
@@ -1657,6 +1842,21 @@ class RdlaFilter:
             self.asset_names = self.options.assetstokeep.split()
         else:
             self.asset_names = [".*"]
+
+        if self.options.assetstodelete:
+            self.delete_names = self.options.assetstodelete.split()
+        else:
+            self.delete_names = []
+
+        if self.options.excludegeometryclasses:
+            self.exclude_names = self.options.excludegeometryclasses.split()
+        else:
+            self.exclude_names = []
+
+        if self.options.includegeometryclasses:
+            self.include_names = self.options.includegeometryclasses.split()
+        else:
+            self.include_names = []
 
         return True
 
