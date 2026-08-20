@@ -13,7 +13,6 @@ endif()
 find_package(Python COMPONENTS Interpreter Development)
 find_package(Boost REQUIRED
   COMPONENTS
-    system
     "${BOOST_PYTHON_COMPONENT_NAME}"
     date_time
     chrono)
@@ -67,7 +66,6 @@ target_include_directories(${component} SYSTEM
 
 target_link_libraries(${component}
     PRIVATE
-        Boost::system
         Boost::${BOOST_PYTHON_COMPONENT_NAME}
         Boost::date_time
         Boost::chrono
