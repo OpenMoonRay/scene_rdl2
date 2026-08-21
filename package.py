@@ -79,7 +79,7 @@ variants = [
         'opt_level-optdebug',
         'refplat-vfx2022.0',
         'gcc-9.3.x.1',
-        'python-3.9'
+        'python-3.11'
     ],
 ]
 

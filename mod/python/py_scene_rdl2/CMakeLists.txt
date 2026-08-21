@@ -4,11 +4,11 @@
 set(component __${PACKAGE_NAME}__)
 
 if (NOT DEFINED BOOST_PYTHON_COMPONENT_NAME)
-    # may need to be, e.g. python36, python39
+    # may need to be, e.g. python36, python311
     set(BOOST_PYTHON_COMPONENT_NAME python)
 endif()
 
-# may need to be, e.g. python36, python39
+# may need to be, e.g. python36, python311
 
 find_package(Python COMPONENTS Interpreter Development)
 find_package(Boost REQUIRED
