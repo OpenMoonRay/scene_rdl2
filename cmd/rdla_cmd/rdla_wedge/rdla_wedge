@@ -108,6 +108,19 @@ def runCmdWithOutput(textCmd, useShell):
         return (True, tmpStdOut, tmpStdErr)
 
 
+def getImageHeight(inputFile):
+    """Query image height via oiiotool --info. Returns None if it can't be determined."""
+    infoCmd = ['oiiotool', '--info', inputFile]
+    success, stdout, stderr = runCmdWithOutput(infoCmd, False)
+    if not success:
+        return None
+    output = stdout.decode('utf-8') if isinstance(stdout, bytes) else stdout
+    # oiiotool --info prints e.g. "foo.exr : 1920 x 1080, 4 channel, ..."
+    match = re.search(r':\s*\d+\s*x\s*(\d+)', output)
+    if match:
+        return int(match.group(1))
+    return None
+
 def overlayTextCmd(inputFile,
                    textColor,
                    textSize,
@@ -116,7 +129,8 @@ def overlayTextCmd(inputFile,
                    vertOffset,
                    verbose,
                    position,
-                   outputFile):
+                   outputFile,
+                   imgHeight):
 
     # Calculate y position based on position (top or bottom)
     # oiiotool measures y from top of image
@@ -125,10 +139,12 @@ def overlayTextCmd(inputFile,
         # Use text size as base offset so text position scales with text size
         y_pos = textSize + int(vertOffset)
     else:
-        # For bottom positioning, we'd ideally need image height
-        # Using a large value that works for typical render resolutions
-        y_pos = 2000 + int(vertOffset)
-    
+        # Bottom positioning needs the actual image height
+        if imgHeight is None:
+            printError('Could not determine image height for text overlay positioning: ', inputFile)
+            return False
+        y_pos = imgHeight - textSize - int(vertOffset)
+
     x_pos = 8
     
     # Convert common color names to RGB values for oiiotool
@@ -245,7 +261,7 @@ def render_single_frame(args):
         
         if not mcrt_time and verbose:
             print('\tMCRT time not found in output')
-    
+
     # Apply text overlay if requested
     if apply_text:
         success = apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time, 
@@ -266,6 +282,10 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
      multiType, additionalParams, wedge_value, wedge_label) = text_params
     
     tmpOutputFile = '%s/tmp_text_overlay_%04d.exr' % (workDir, frameNumber)
+    
+    # Determine the image height once per frame; every overlay line reuses it
+    # rather than re-querying oiiotool for an invariant value.
+    imgHeight = getImageHeight(outputFile) if textposition != 'top' else None
     
     # Calculate the end frame for animation based on pingpong mode
     if pingpong:
@@ -306,7 +326,7 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
     currentInput = outputFile
     if mcrt_time:
         if not overlayTextCmd(currentInput, textcolor, textsize, 'Mcrt time', mcrt_time,
-                             vertOffset, verbose, textposition, tmpOutputFile):
+                             vertOffset, verbose, textposition, tmpOutputFile, imgHeight):
             return False
         vertOffset += (textsize * 1.5)
         currentInput = tmpOutputFile
@@ -314,7 +334,7 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
     # Apply frame number if requested
     if show_frame_number:
         if not overlayTextCmd(currentInput, textcolor, textsize, 'Frame', str(frameNumber),
-                             vertOffset, verbose, textposition, tmpOutputFile):
+                             vertOffset, verbose, textposition, tmpOutputFile, imgHeight):
             return False
         vertOffset += (textsize * 1.5)
         currentInput = tmpOutputFile
@@ -323,7 +343,7 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
     if wedge_label:
         wedge_display = '%.2f' % wedge_value
         if not overlayTextCmd(currentInput, textcolor, textsize, wedge_label, wedge_display,
-                             vertOffset, verbose, textposition, tmpOutputFile):
+                             vertOffset, verbose, textposition, tmpOutputFile, imgHeight):
             return False
         vertOffset += (textsize * 1.5)
         currentInput = tmpOutputFile
@@ -331,7 +351,7 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
     # Apply main parameter text (only if show_parameter is True and we have a parameter name)
     if show_parameter and parameterName:
         if not overlayTextCmd(currentInput, textcolor, textsize, parameterName, value,
-                             vertOffset, verbose, textposition, tmpOutputFile):
+                             vertOffset, verbose, textposition, tmpOutputFile, imgHeight):
             return False
         vertOffset += (textsize * 1.5)
         currentInput = tmpOutputFile
@@ -340,7 +360,7 @@ def apply_text_overlay(frameNumber, outputFile, text_params, mcrt_time=None,
     if show_parameter:
         for k, v in additionalParams.items():
             if not overlayTextCmd(currentInput, textcolor, textsize, k, v,
-                                 vertOffset, verbose, textposition, tmpOutputFile):
+                                 vertOffset, verbose, textposition, tmpOutputFile, imgHeight):
                 return False
             vertOffset += (textsize * 1.5)
             currentInput = tmpOutputFile
@@ -519,6 +539,13 @@ class RdlaWedge:
             self.mWedgeMaxValue1 = None
             self.mWedgeMinValue2 = None
             self.mWedgeMaxValue2 = None
+
+        # --overlay-parameter has no parameter name/value to show unless
+        # --animate-parameter was also given (that's what sets mParameterName)
+        if self.mOptions.overlay_parameter and not self.mOptions.animate_parameter:
+            parser.error("--overlay-parameter requires --animate-parameter " +
+                         "(it overlays the name/value set by --animate-parameter)")
+            return
         
         # Detect and collapse shell-expanded glob patterns back into patterns
         # If the shell expanded "foo.*.exr" into ["foo.0000.exr", "foo.0001.exr", ...],
