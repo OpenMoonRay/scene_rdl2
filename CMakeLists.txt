@@ -62,6 +62,19 @@ find_package(Log4cplus REQUIRED)
 find_package(Python COMPONENTS Interpreter Development)
 find_package(TBB REQUIRED)
 
+# Houdini's macOS Python framework records its install name as @rpath/Python,
+# even when CMake finds it through the libpython compatibility path.  Embed the
+# framework root so Python extension modules can be loaded by build-time tools.
+if(APPLE AND TARGET Python::Python)
+    get_target_property(_python_library Python::Python IMPORTED_LOCATION_RELEASE)
+    if(NOT _python_library)
+        get_target_property(_python_library Python::Python IMPORTED_LOCATION)
+    endif()
+    if(_python_library MATCHES "^(.+\\.framework)/")
+        set(_python_framework_rpath "${CMAKE_MATCH_1}")
+    endif()
+endif()
+
 find_program(LUA_BIN_LUAC
     NAMES luac
     HINTS $ENV{LUA_DIR}/bin)
@@ -71,8 +84,11 @@ find_program(LUA_BIN_LUA
     HINTS $ENV{LUA_DIR}/bin)
 
 # Set the RPATH for binaries in the install tree
-set(CMAKE_BUILD_RPATH ${COMPILER_LIBRARY_DIR})
+set(CMAKE_BUILD_RPATH ${COMPILER_LIBRARY_DIR} ${_python_framework_rpath})
 set(CMAKE_INSTALL_RPATH ${GLOBAL_INSTALL_RPATH})
+if(_python_framework_rpath)
+    list(APPEND CMAKE_INSTALL_RPATH ${_python_framework_rpath})
+endif()
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # if OPT_LEVEL is set use its value to override the CMAKE_BUILD_TYPE because the
@@ -158,4 +174,3 @@ install(
     DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}-${PROJECT_VERSION}
 )
-
