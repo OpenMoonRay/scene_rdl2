@@ -57,7 +57,6 @@ function(SceneRdl2_cxx_compile_options target)
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL AppleClang)
         target_compile_options(${target}
             PUBLIC
-                -Wno-gnu-alignof-expression
         )
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL Intel)
         target_compile_options(${target}

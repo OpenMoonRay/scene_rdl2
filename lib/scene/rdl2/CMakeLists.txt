@@ -202,7 +202,7 @@ add_executable(rdl2_ispc_util)
 target_sources(rdl2_ispc_util PRIVATE rdl2_ispc_util/rdl2_ispc_util.cc)
 target_link_libraries(rdl2_ispc_util PRIVATE scene_rdl2_tmp)
 if (IsDarwinPlatform)
-    add_custom_command(TARGET rdl2_ispc_util POST_BUILD COMMAND /usr/bin/codesign -s - -f -o linker-signed */rdl2_ispc_util)
+    add_custom_command(TARGET rdl2_ispc_util POST_BUILD COMMAND /usr/bin/codesign -s - -f -o linker-signed $<TARGET_FILE:rdl2_ispc_util>)
 endif()
 
 # Set standard compile/link options
