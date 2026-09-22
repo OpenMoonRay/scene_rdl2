@@ -35,7 +35,7 @@ target_link_libraries(${component}
         Boost::regex
         Boost::thread
     PUBLIC
-        Log4cplus::Log4cplus
+        Log4cplus::log4cplus
 )
 
 # If at Dreamworks add a SConscript stub file so others can use this library.

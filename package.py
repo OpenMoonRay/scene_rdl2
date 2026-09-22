@@ -77,9 +77,9 @@ variants = [
     [   # variant 6
         'os-rocky-9',
         'opt_level-optdebug',
-        'refplat-vfx2022.0',
-        'gcc-9.3.x.1',
-        'python-3.9'
+        'refplat-vfx2026.0',
+        'gcc-14.2.x',
+        'python-3.13'
     ],
 ]
 
@@ -92,7 +92,7 @@ for i, variant in enumerate(variants):
 
 requires = [
     'boost',
-    'jsoncpp-1.9.5.x',
+    'jsoncpp-1.9',
     'log4cplus-1.1.2.x',
     'lua',
     'tbb',
@@ -100,7 +100,7 @@ requires = [
 ]
 
 private_build_requires = [
-    'cmake_modules-1.1',
+    'cmake_modules-2.0',
     'ispc-1.20.0.x',
     'ssl'
 ]
