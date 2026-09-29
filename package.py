@@ -81,6 +81,13 @@ variants = [
         'gcc-14.2.x',
         'python-3.13'
     ],
+    [   # variant 7
+        'os-rocky-9',
+        'opt_level-optdebug',
+        'refplat-vfx2022.0',
+        'gcc-9.3.x.1',
+        'python-3.9'
+    ],
 ]
 
 conf_rats_variants = variants[0:2]
