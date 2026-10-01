@@ -10,6 +10,7 @@
 #include <scene_rdl2/scene/rdl2/BinaryReader.h>
 #include <scene_rdl2/scene/rdl2/BinaryWriter.h>
 #include <scene_rdl2/scene/rdl2/SceneContext.h>
+#include <scene_rdl2/common/except/exceptions.h>
 
 namespace scene_rdl2 {
 namespace rdl2 {
@@ -32,6 +33,7 @@ TestUserData::setUp()
     CPPUNIT_ASSERT(!ud->hasColorData());
     CPPUNIT_ASSERT(!ud->hasVec2fData());
     CPPUNIT_ASSERT(!ud->hasVec3fData());
+    CPPUNIT_ASSERT(!ud->hasVec4fData());
     CPPUNIT_ASSERT(!ud->hasMat4fData());
 
     // sets
@@ -49,6 +51,9 @@ TestUserData::setUp()
     mVec2fValues = {Vec2f(1, 3), Vec2f(5, 7)};
     mVec3fKey = "test_vec3f_var";
     mVec3fValues = {Vec3f{2, 4, 6}, Vec3f(8, 10, 12), Vec3f(14, 16, 18)};
+    mVec4fKey = "test_vec4f_var";
+    mVec4fValues0 = {Vec4f(1, 2, 3, 4), Vec4f(0, 0, 0, 1)};
+    mVec4fValues1 = {Vec4f(5, 6, 7, 8), Vec4f(0, 0, 1, 0)};
     mMat4fKey = "test_mat4f_var";
     mMat4fValues = {
         Mat4f(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1),
@@ -62,6 +67,7 @@ TestUserData::setUp()
     ud->setColorData(mColorKey, mColorValues);
     ud->setVec2fData(mVec2fKey, mVec2fValues);
     ud->setVec3fData(mVec3fKey, mVec3fValues);
+    ud->setVec4fData(mVec4fKey, mVec4fValues0, mVec4fValues1);
     ud->setMat4fData(mMat4fKey, mMat4fValues);
     ud->endUpdate();
 }
@@ -110,6 +116,12 @@ TestUserData::testSetup()
     for (size_t i = 0; i < vec3fs.size(); ++i) {
         CPPUNIT_ASSERT(vec3fs[i] == mVec3fValues[i]);
     }
+    CPPUNIT_ASSERT(ud->hasVec4fData());
+    CPPUNIT_ASSERT(ud->hasVec4fData1());
+    CPPUNIT_ASSERT(ud->getVec4fKey() == mVec4fKey);
+    CPPUNIT_ASSERT(ud->getVec4fValues() == mVec4fValues0);
+    CPPUNIT_ASSERT(ud->getVec4fValues1() == mVec4fValues1);
+
     CPPUNIT_ASSERT(ud->getMat4fKey() == mMat4fKey);
     const auto& mat4fs = ud->getMat4fValues();
     for (size_t i = 0; i < mat4fs.size(); ++i) {
@@ -201,6 +213,10 @@ TestUserData::compare(SceneContext const &a, SceneContext const &b) const
         CPPUNIT_ASSERT(vec3fs1[i] == vec3fs2[i]);
     }
 
+    CPPUNIT_ASSERT(ud1->getVec4fKey() == ud2->getVec4fKey());
+    CPPUNIT_ASSERT(ud1->getVec4fValues0() == ud2->getVec4fValues0());
+    CPPUNIT_ASSERT(ud1->getVec4fValues1() == ud2->getVec4fValues1());
+
     CPPUNIT_ASSERT(ud1->getMat4fKey() == ud2->getMat4fKey());
     const auto& mat4fs1= ud1->getMat4fValues();
     const auto& mat4fs2= ud2->getMat4fValues();
@@ -210,7 +226,95 @@ TestUserData::compare(SceneContext const &a, SceneContext const &b) const
     }
 }
 
+void
+TestUserData::testReleaseData()
+{
+    UserData* ud = mContext->getSceneObject(mUserDataName)->asA<UserData>();
+    ud->beginUpdate();
+    ud->setFloatData(mFloatKey, mFloatValues, mFloatValues);
+    ud->endUpdate();
+    CPPUNIT_ASSERT(!ud->isDataReleased());
+    CPPUNIT_ASSERT(ud->hasFloatData1());
+
+    ud->releaseData();
+    CPPUNIT_ASSERT(ud->isDataReleased());
+
+    // every value vector is empty and its capacity freed
+    CPPUNIT_ASSERT(!ud->hasBoolData());
+    CPPUNIT_ASSERT(!ud->hasIntData());
+    CPPUNIT_ASSERT(!ud->hasFloatData0());
+    CPPUNIT_ASSERT(!ud->hasFloatData1());
+    CPPUNIT_ASSERT(!ud->hasStringData());
+    CPPUNIT_ASSERT(!ud->hasColorData());
+    CPPUNIT_ASSERT(!ud->hasVec2fData());
+    CPPUNIT_ASSERT(!ud->hasVec3fData());
+    CPPUNIT_ASSERT(!ud->hasVec4fData());
+    CPPUNIT_ASSERT(!ud->hasVec4fData1());
+    CPPUNIT_ASSERT(!ud->hasMat4fData());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getVec4fValues0().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getVec4fValues1().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getIntValues().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getFloatValues0().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getFloatValues1().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getVec3fValues().capacity());
+    CPPUNIT_ASSERT_EQUAL(size_t(0), ud->getMat4fValues().capacity());
+
+    // keys are kept so diagnostics can still name the released data
+    CPPUNIT_ASSERT(ud->getVec3fKey() == mVec3fKey);
+
+    // releasing again is a no-op
+    ud->releaseData();
+    CPPUNIT_ASSERT(ud->isDataReleased());
+}
+
+void
+TestUserData::testReleasedUpdateThrows()
+{
+    UserData* ud = mContext->getSceneObject(mUserDataName)->asA<UserData>();
+    ud->releaseData();
+
+    CPPUNIT_ASSERT_THROW(ud->beginUpdate(), except::RuntimeError);
+    CPPUNIT_ASSERT_THROW(SceneObject::UpdateGuard guard(ud), except::RuntimeError);
+    CPPUNIT_ASSERT_THROW(ud->setIntData(mIntKey, mIntValues), except::RuntimeError);
+
+    // the failed updates must not have left the object half-updated
+    CPPUNIT_ASSERT(!ud->hasIntData());
+    CPPUNIT_ASSERT_THROW(ud->beginUpdate(), except::RuntimeError);
+
+    // other objects in the context are unaffected
+    UserData* other = mContext->createSceneObject("UserData", "/otherUserData")->asA<UserData>();
+    other->beginUpdate();
+    other->setIntData(mIntKey, mIntValues);
+    other->endUpdate();
+    CPPUNIT_ASSERT(other->hasIntData());
+}
+
+void
+TestUserData::testReleasedWriteThrows()
+{
+    UserData* ud = mContext->getSceneObject(mUserDataName)->asA<UserData>();
+    ud->releaseData();
+
+    // a full write would silently serialize the now-empty values
+    AsciiWriter asciiWriter(*mContext);
+    CPPUNIT_ASSERT_THROW(asciiWriter.toString(), except::RuntimeError);
+    BinaryWriter binaryWriter(*mContext);
+    std::string manifest, payload;
+    CPPUNIT_ASSERT_THROW(binaryWriter.toBytes(manifest, payload), except::RuntimeError);
+
+    // delta writes skip clean objects, so a released object that hasn't
+    // changed since the last commit doesn't block writing the rest
+    mContext->commitAllChanges();
+    AsciiWriter asciiDeltaWriter(*mContext);
+    asciiDeltaWriter.setDeltaEncoding(true);
+    CPPUNIT_ASSERT_NO_THROW(asciiDeltaWriter.toString());
+    BinaryWriter binaryDeltaWriter(*mContext);
+    binaryDeltaWriter.setDeltaEncoding(true);
+    manifest.clear();
+    payload.clear();
+    CPPUNIT_ASSERT_NO_THROW(binaryDeltaWriter.toBytes(manifest, payload));
+}
+
 } // namespace unittest
 } // namespace rdl2
 } // namespace scene_rdl2
-

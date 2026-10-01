@@ -97,7 +97,8 @@ SceneObject::SceneObject(const SceneClass& sceneClass, const std::string& name) 
     mUpdatePrepApplied(false),
     mAttributeTreeChanged(false),
     mBindingTreeChanged(false),
-    mUpdateRequested(false)
+    mUpdateRequested(false),
+    mDataReleased(false)
 {
     mAttributeStorage = mSceneClass.createStorage();
     mAttributeUpdateMask.set(); // all attributes just got set to defaults

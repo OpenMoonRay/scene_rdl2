@@ -917,6 +917,15 @@ public:
 #endif
     }
 
+    /**
+     * Whether the renderer has released this object's attribute data (see
+     * markDataReleased()). A released object may still be read, but some of
+     * its attribute values may now be empty, so it can never be updated or
+     * serialized again: beginUpdate() and the Ascii/Binary writers throw
+     * except::RuntimeError for it.
+     */
+    finline bool isDataReleased() const { return mDataReleased; }
+
 protected:
     // Only derived classes should call this constructor to initialize the
     // SceneObject base class. To create SceneObjects of any SceneClass type,
@@ -939,6 +948,25 @@ protected:
         mAttributeTreeChanged |= updateRequired;
         return updateRequired;
     }
+
+    /**
+     * Frees the heap storage backing a vector-typed attribute in place,
+     * leaving it an empty, zero-capacity vector. The attribute set/update
+     * masks are left untouched, so callers must also call markDataReleased()
+     * to keep the object from being updated or serialized with the now-empty
+     * value.
+     *
+     * @param   key     An AttributeKey for the vector-typed attribute to release.
+     */
+    template <typename T>
+    finline void releaseAttributeStorage(AttributeKey<T> key);
+
+    /**
+     * Permanently marks this object's attribute data as released. Only for use
+     * once the renderer guarantees this object will never be updated or
+     * serialized again for the life of its SceneContext.
+     */
+    void markDataReleased() { mDataReleased = true; }
 
     // The SceneClass defining the layout of this SceneObject.
     const SceneClass& mSceneClass;
@@ -1054,6 +1082,10 @@ private:
     //  updated.  (E.g. a displacement assignment in a layer.)
     bool mUpdateRequested;
 
+    // Set once the renderer has released this object's attribute data. See
+    // markDataReleased().
+    bool mDataReleased;
+
     // Classes requiring access for serialization.
     friend class AsciiWriter;
     friend class BinaryWriter;
@@ -1157,6 +1189,14 @@ SceneObject::getMutable(AttributeKey<T> key, AttributeTimestep timestep)
 }
 
 template <typename T>
+void
+SceneObject::releaseAttributeStorage(AttributeKey<T> key)
+{
+    T empty;
+    getMutable(key).swap(empty); // swap frees the capacity; clear() would not
+}
+
+template <typename T>
 SceneObject*
 SceneObject::getBinding(AttributeKey<T> key) const
 {
@@ -1188,6 +1228,12 @@ SceneObject::getBinding(const Attribute& attr) const
 void
 SceneObject::beginUpdate()
 {
+    if (mDataReleased) {
+        std::stringstream errMsg;
+        errMsg << "Cannot update SceneObject '" << mName << "' because the"
+            " renderer has already consumed and released its attribute data.";
+        throw except::RuntimeError(errMsg.str());
+    }
     MNRY_ASSERT_REQUIRE(!mUpdateActive, "Cannot begin next attribute update"
         " until previous one is ended.");
     mUpdateActive = true;

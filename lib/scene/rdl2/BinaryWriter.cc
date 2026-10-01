@@ -13,6 +13,7 @@
 #include "Utils.h"
 
 #include <scene_rdl2/common/except/exceptions.h>
+#include <scene_rdl2/render/util/Strings.h>
 
 #include <cstddef>
 #include <fstream>
@@ -171,6 +172,11 @@ BinaryWriter::writeSceneObject(const SceneObject& sceneObject, std::string& byte
 void
 BinaryWriter::packSceneObject(const SceneObject& sceneObject, ValueContainerEnq &vContainerEnq) const
 {
+    if (sceneObject.isDataReleased()) {
+        throw except::RuntimeError(util::buildString("Cannot write SceneObject '",
+                sceneObject.getName(), "' because the renderer has released its attribute data."));
+    }
+
     const SceneClass& sceneClass = sceneObject.getSceneClass();
 
     // Step over each attribute.

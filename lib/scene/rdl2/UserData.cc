@@ -35,6 +35,10 @@ AttributeKey<String> UserData::sAttrVec3fKey;
 AttributeKey<Vec3fVector> UserData::sAttrVec3fValues0;
 AttributeKey<Vec3fVector> UserData::sAttrVec3fValues1;
 
+AttributeKey<String> UserData::sAttrVec4fKey;
+AttributeKey<Vec4fVector> UserData::sAttrVec4fValues0;
+AttributeKey<Vec4fVector> UserData::sAttrVec4fValues1;
+
 AttributeKey<String> UserData::sAttrMat3fKey;
 AttributeKey<Mat3fVector> UserData::sAttrMat3fValues0;
 AttributeKey<Mat3fVector> UserData::sAttrMat3fValues1;
@@ -170,6 +174,22 @@ UserData::declare(SceneClass& sceneClass)
     sceneClass.setEnumValue(sAttrRateKey, 6, "face varying");
     sceneClass.setMetadata(sAttrRateKey, "comment",
             "The rate of the data.  Auto mode will guess the rate by comparing the number of values to component(i.e. part, face. vertex) counts.");
+
+    // Declared after the attributes above, which keeps their indices the same
+    // as before vec4f was added
+    sAttrVec4fKey = sceneClass.declareAttribute<String>("vec4f_key", "", { "vec4f key" });
+    sceneClass.setMetadata(sAttrVec4fKey, "label", "vec4f key");
+    sceneClass.setMetadata(sAttrVec4fKey, SceneClass::sComment,
+        "key name for vec4f type user data");
+    sAttrVec4fValues0 = sceneClass.declareAttribute<Vec4fVector>("vec4f_values_0", rdl2::FLAGS_NONE,
+        rdl2::INTERFACE_GENERIC, { "vec4f_values", "vec4f values" });
+    sceneClass.setMetadata(sAttrVec4fValues0, "label", "vec4f values 0");
+    sceneClass.setMetadata(sAttrVec4fValues0, SceneClass::sComment,
+        "vec4f type user data values for motion step 0");
+    sAttrVec4fValues1 = sceneClass.declareAttribute<Vec4fVector>("vec4f_values_1");
+    sceneClass.setMetadata(sAttrVec4fValues1, "label", "vec4f values 1");
+    sceneClass.setMetadata(sAttrVec4fValues1, SceneClass::sComment,
+        "vec4f type user data values for motion step 1");
 
     return interface | INTERFACE_USERDATA;
 }
@@ -485,6 +505,63 @@ UserData::getVec3fValues1() const
 }
 
 bool
+UserData::hasVec4fData() const
+{
+    return hasVec4fData0();
+}
+
+bool
+UserData::hasVec4fData0() const
+{
+    return !get(sAttrVec4fKey).empty() && !get(sAttrVec4fValues0).empty();
+}
+
+bool
+UserData::hasVec4fData1() const
+{
+    return !get(sAttrVec4fKey).empty() && !get(sAttrVec4fValues1).empty();
+}
+
+const String&
+UserData::getVec4fKey() const
+{
+    return get(sAttrVec4fKey);
+}
+
+void
+UserData::setVec4fData(const String& key, const Vec4fVector& values)
+{
+    set(sAttrVec4fKey, key);
+    set(sAttrVec4fValues0, values);
+}
+
+void
+UserData::setVec4fData(const String& key, const Vec4fVector& values0, const Vec4fVector& values1)
+{
+    set(sAttrVec4fKey, key);
+    set(sAttrVec4fValues0, values0);
+    set(sAttrVec4fValues1, values1);
+}
+
+const Vec4fVector&
+UserData::getVec4fValues() const
+{
+    return getVec4fValues0();
+}
+
+const Vec4fVector&
+UserData::getVec4fValues0() const
+{
+    return get(sAttrVec4fValues0);
+}
+
+const Vec4fVector&
+UserData::getVec4fValues1() const
+{
+    return get(sAttrVec4fValues1);
+}
+
+bool
 UserData::hasMat3fData() const
 {
     return hasMat3fData0();
@@ -608,6 +685,33 @@ int
 UserData::getRate() const
 {
     return get(sAttrRateKey);
+}
+
+void
+UserData::releaseData()
+{
+    if (isDataReleased()) {
+        return;
+    }
+
+    releaseAttributeStorage(sAttrBoolValues);
+    releaseAttributeStorage(sAttrIntValues);
+    releaseAttributeStorage(sAttrFloatValues0);
+    releaseAttributeStorage(sAttrFloatValues1);
+    releaseAttributeStorage(sAttrStringValues);
+    releaseAttributeStorage(sAttrColorValues0);
+    releaseAttributeStorage(sAttrColorValues1);
+    releaseAttributeStorage(sAttrVec2fValues0);
+    releaseAttributeStorage(sAttrVec2fValues1);
+    releaseAttributeStorage(sAttrVec3fValues0);
+    releaseAttributeStorage(sAttrVec3fValues1);
+    releaseAttributeStorage(sAttrVec4fValues0);
+    releaseAttributeStorage(sAttrVec4fValues1);
+    releaseAttributeStorage(sAttrMat3fValues0);
+    releaseAttributeStorage(sAttrMat3fValues1);
+    releaseAttributeStorage(sAttrMat4fValues0);
+    releaseAttributeStorage(sAttrMat4fValues1);
+    markDataReleased();
 }
 
 

@@ -27,11 +27,17 @@ public:
     void testSetup();
     void testAscii();
     void testBinary();
+    void testReleaseData();
+    void testReleasedUpdateThrows();
+    void testReleasedWriteThrows();
 
     CPPUNIT_TEST_SUITE(TestUserData);
     CPPUNIT_TEST(testSetup);
     CPPUNIT_TEST(testAscii);
     CPPUNIT_TEST(testBinary);
+    CPPUNIT_TEST(testReleaseData);
+    CPPUNIT_TEST(testReleasedUpdateThrows);
+    CPPUNIT_TEST(testReleasedWriteThrows);
     CPPUNIT_TEST_SUITE_END();
 
 private:
@@ -54,6 +60,9 @@ private:
     Vec2fVector mVec2fValues;
     String mVec3fKey;
     Vec3fVector mVec3fValues;
+    String mVec4fKey;
+    Vec4fVector mVec4fValues0;
+    Vec4fVector mVec4fValues1;
     String mMat4fKey;
     Mat4fVector mMat4fValues;
 };

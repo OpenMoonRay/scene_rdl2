@@ -91,6 +91,16 @@ public:
     const Vec3fVector& getVec3fValues0() const;
     const Vec3fVector& getVec3fValues1() const;
 
+    bool hasVec4fData() const;
+    bool hasVec4fData0() const;
+    bool hasVec4fData1() const;
+    void setVec4fData(const String& key, const Vec4fVector& values);
+    void setVec4fData(const String& key, const Vec4fVector& values0, const Vec4fVector& values1);
+    const String& getVec4fKey() const;
+    const Vec4fVector& getVec4fValues() const;
+    const Vec4fVector& getVec4fValues0() const;
+    const Vec4fVector& getVec4fValues1() const;
+
     bool hasMat3fData() const;
     bool hasMat3fData0() const;
     bool hasMat3fData1() const;
@@ -113,6 +123,13 @@ public:
 
     void setRate(int rate);
     int getRate() const;
+
+    /// Frees the storage backing every value vector on this UserData and
+    /// marks it released (see SceneObject::isDataReleased()), after which it
+    /// can no longer be updated or serialized. Only for use by the renderer
+    /// once every Geometry that references this UserData has been generated
+    /// and will never be generated again. Idempotent; not thread-safe.
+    void releaseData();
 
 private:
     static AttributeKey<String> sAttrBoolKey;
@@ -139,6 +156,10 @@ private:
     static AttributeKey<String> sAttrVec3fKey;
     static AttributeKey<Vec3fVector> sAttrVec3fValues0;
     static AttributeKey<Vec3fVector> sAttrVec3fValues1;
+
+    static AttributeKey<String> sAttrVec4fKey;
+    static AttributeKey<Vec4fVector> sAttrVec4fValues0;
+    static AttributeKey<Vec4fVector> sAttrVec4fValues1;
 
     static AttributeKey<String> sAttrMat3fKey;
     static AttributeKey<Mat3fVector> sAttrMat3fValues0;

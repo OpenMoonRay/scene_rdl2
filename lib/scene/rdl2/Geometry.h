@@ -153,6 +153,16 @@ public:
     /// is non-null before calling.
     virtual void resetDeformed() {};
 
+    /// Called by the renderer only when it can guarantee that this Geometry
+    /// will never be generated, updated or serialized again for the life of
+    /// the scene (e.g. by the moonray command-line renderer once every
+    /// procedural in the scene has been generated). A Geometry that keeps bulk
+    /// input data in the scene description can override this to free it, and
+    /// should mark whatever it frees as released (see
+    /// SceneObject::isDataReleased()) so later updates fail loudly instead of
+    /// silently regenerating from empty data. The default does nothing.
+    virtual void releaseInputData() {}
+
 protected:
     // Must be implemented by derived classes.
     virtual moonray::geom::Procedural* createProcedural() const = 0;

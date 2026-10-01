@@ -101,6 +101,18 @@ namespace py_scene_rdl2
     }
 
     void
+    PyUserData_setVec4fData(rdl2::UserData& self, const std::string& key, bp::list& values)
+    {
+        const std::vector<rdl2::Vec4f> stdVect =
+                conversions::PyVecContainerToStdVector<rdl2::Vec4f>(values);
+
+        {
+            rdl2::SceneObject::UpdateGuard guard(&self);
+            self.setVec4fData(key, stdVect);
+        }
+    }
+
+    void
     PyUserData_setMat4fData(rdl2::UserData& self, const std::string& key, bp::list& values)
     {
         const std::vector<rdl2::Mat4f> stdVect =
@@ -156,6 +168,12 @@ namespace py_scene_rdl2
     PyUserData_getVec3fValues(rdl2::UserData& self)
     {
         return StdVectorWrapper<rdl2::Vec3f>{ self.getVec3fValues() };
+    }
+
+    StdVectorWrapper<rdl2::Vec4f>
+    PyUserData_getVec4fValues(rdl2::UserData& self)
+    {
+        return StdVectorWrapper<rdl2::Vec4f>{ self.getVec4fValues() };
     }
 
     StdVectorWrapper<rdl2::Mat4f>
@@ -217,6 +235,11 @@ namespace py_scene_rdl2
             .def("setVec3fData", &PyUserData_setVec3fData, (bp::arg("key"), bp::arg("values")))
             .def("getVec3fKey", &rdl2::UserData::getVec3fKey, bp::return_value_policy<bp::copy_const_reference>())
             .def("getVec3fValues", &PyUserData_getVec3fValues)
+
+            .def("hasVec4fData", &rdl2::UserData::hasVec4fData)
+            .def("setVec4fData", &PyUserData_setVec4fData, (bp::arg("key"), bp::arg("values")))
+            .def("getVec4fKey", &rdl2::UserData::getVec4fKey, bp::return_value_policy<bp::copy_const_reference>())
+            .def("getVec4fValues", &PyUserData_getVec4fValues)
 
             .def("hasMat4fData", &rdl2::UserData::hasMat4fData)
             .def("setMat4fData", &PyUserData_setMat4fData, (bp::arg("key"), bp::arg("values")))

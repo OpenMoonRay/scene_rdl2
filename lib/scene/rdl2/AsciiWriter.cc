@@ -646,6 +646,11 @@ AsciiWriter::valueToString(const SceneObject* so, const Attribute* attr,
 void
 AsciiWriter::writeSceneObject(std::ostream& out, const SceneObject* so) const
 {
+    if (so->isDataReleased()) {
+        throw except::RuntimeError(util::buildString("Cannot write SceneObject '",
+                so->getName(), "' because the renderer has released its attribute data."));
+    }
+
     const SceneClass& sc = so->getSceneClass();
     for (auto iter = sc.beginAttributes(); iter != sc.endAttributes(); ++iter) {
         const Attribute* attr = *iter;
