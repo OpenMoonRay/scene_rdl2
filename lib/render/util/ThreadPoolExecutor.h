@@ -1,4 +1,4 @@
-// Copyright 2024-2025 DreamWorks Animation LLC
+// Copyright 2024-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
@@ -24,11 +24,13 @@ class ThreadExecutor
 public:
     enum class ThreadState : int {INIT, IDLE, BUSY, FINISH};
 
+    static constexpr unsigned kNotPinnedCpuId = ~static_cast<unsigned>(0);
+
     ThreadExecutor() = default;
     ~ThreadExecutor();
 
     // Might throw except::RuntimeError
-    void boot(size_t threadId, ThreadPoolExecutor* poolExecutor, int pinCpuId = ~static_cast<int>(0));
+    void boot(size_t threadId, ThreadPoolExecutor* poolExecutor, unsigned pinnedCpuId = kNotPinnedCpuId);
 
     ThreadState getThreadState() const { return mThreadState; }
 
@@ -42,7 +44,7 @@ private:
     //------------------------------
 
     size_t mThreadId {0};
-    int mPinCpuId {~static_cast<int>(0)};
+    unsigned mPinnedCpuId {kNotPinnedCpuId};
     ThreadPoolExecutor* mPoolExecutor {nullptr};
 
     std::atomic<ThreadState> mThreadState {ThreadState::INIT};
@@ -101,17 +103,50 @@ class ThreadPoolExecutor
 // This is an example of CPU-affinity control that assigns the same cpuId of threadId :
 //
 //    ThreadPoolExecutor pool(32,
-//                            [](size_t threadId) -> size_t {
-//                                return threadId;
+//                            [](size_t threadId) -> unsigned {
+//                                return static_cast<unsigned>(threadId);
 //                            }); // ... (A)'
 //
 // Using (A)' instead of (A) does CPU-affinity control. ThreadId=0 is running on CPUid=0, threadId=1
 // is running on CPUid=1, and so on.
 //
+// The pool thread that runs a given task is not determined; any idle thread takes the next queued task.
+// A task that needs a resource tied to the CPU pinning (e.g. memory placed on the NUMA node of that CPU)
+// must pick it by getCurrentPinnedCpuId(), not by the order in which the task was enqueued.
+//
+//    ThreadPoolExecutor pool(32,
+//                            [](size_t threadId) -> unsigned {
+//                                return static_cast<unsigned>(threadId); // returns expected CPU-id
+//                            }); // CPU-affinity enabled
+//
+//    for (int taskId = 0; taskId < taskMax; ++taskId) {
+//        pool.run([] {
+//             unsigned pinnedCpuId = ThreadPoolExecutor::getCurrentPinnedCpuId(); // returns my Pinned-CPU-id
+//             size_t threadId = ThreadPoolExecutor::getCurrentThreadId(); // returns my Thread-id inside threadPool
+//             ... some task ...
+//        });
+//    }
+//
 {
 public:
     using TaskFunc = std::function<void()>;
-    using CalcCpuIdFunc = std::function<size_t(size_t threadId)>;
+    using CalcCpuIdFunc = std::function<unsigned(size_t threadId)>;
+
+    // Returned by getCurrentThreadId() on a thread that does not belong to a ThreadPoolExecutor.
+    static constexpr size_t kNotPoolThread = ~static_cast<size_t>(0);
+
+    // Pool thread id of the calling thread (0 ... pool size - 1, the id passed to cpuIdFunc), or
+    // kNotPoolThread if the caller is not a pool thread. Only meaningful inside a task.
+    // If multiple ThreadPoolExecutor instances exist, it returns the id within the pool to which
+    // the calling thread belongs.
+    static size_t getCurrentThreadId();
+
+    // Invalid CPU-id returned outside the pool or when CPU pinning is not enabled.
+    static constexpr unsigned kNotPinnedCpuId = ThreadExecutor::kNotPinnedCpuId;
+
+    // Returns the CPU-id assigned by this pool's CPU pinning.
+    // Returns kNotPinnedCpuId outside the pool, without CPU pinning, or on Apple platforms.
+    static unsigned getCurrentPinnedCpuId();
 
     // threadTotal = 0 means set same number of all cpus
     ThreadPoolExecutor(size_t threadTotal = 0, const CalcCpuIdFunc& cpuIdFunc = nullptr);
