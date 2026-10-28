@@ -260,7 +260,6 @@ testMemPoolAllocator(const char *name,
                      unsigned numOpsPerLoop)
 {
     const unsigned numThreads = std::thread::hardware_concurrency();
-    const unsigned totalBlocks = numBlocksToReservePerThread * numThreads;
 
     //
     // There can be some strange conditions where additional TBB threads are spawned
@@ -275,6 +274,14 @@ testMemPoolAllocator(const char *name,
     //
     // TODO: Revisit this to see if oneTBB has fixed this issue.
     const unsigned overflowNumThreads = numThreads + 4;
+
+    // The block pool must be sized for the same overflowNumThreads used for the TLS
+    // objects below, not just numThreads: if TBB actually spawns the extra threads this
+    // comment warns about, those threads' MemPool::fastReset() calls draw from this same
+    // shared blockPool. Sizing it to numThreads only left it exactly as many threads'
+    // worth short, causing MemBlockManager::allocateBlock() to return nullptr and firing
+    // the MNRY_ASSERT(mActiveBlock && mActiveBlock->isEmpty()) in MemPool.h on overflow.
+    const unsigned totalBlocks = numBlocksToReservePerThread * overflowNumThreads;
 
     fprintf(stderr, "\n------------ Testing MemPool %s ------------\n\n", name);
 
