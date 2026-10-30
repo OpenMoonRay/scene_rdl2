@@ -211,6 +211,19 @@ SceneRdl2_cxx_compile_features(rdl2_ispc_util)
 SceneRdl2_cxx_compile_options(rdl2_ispc_util)
 SceneRdl2_link_options(rdl2_ispc_util)
 
+# rdl2_ispc_util.cc deliberately dereferences a fake pointer (asOFFSET macro)
+# to compute member offsets without a standard-layout requirement. This is
+# intentional, long-standing undefined behavior that normally gets folded
+# into pure address arithmetic by the optimizer, but sanitizer
+# instrumentation can make it perform a real memory access and crash. Since
+# this tool only runs at build time to generate a header and isn't part of
+# any sanitized runtime surface, disable sanitizer instrumentation for its
+# own object code. The link step still needs the normal sanitizer link
+# flags (kept via SceneRdl2_link_options above), since it links against
+# scene_rdl2_tmp, which is compiled with sanitizer instrumentation and
+# needs the sanitizer runtime to resolve its __asan_*/__ubsan_* references.
+target_compile_options(rdl2_ispc_util PRIVATE -fno-sanitize=all)
+
 # =============================================================
 
 
