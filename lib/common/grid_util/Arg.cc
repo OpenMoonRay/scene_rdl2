@@ -1,19 +1,21 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #include "Arg.h"
 #include "TlSvr.h"
 
 #include <scene_rdl2/render/util/StrUtil.h>
 
+#include <cctype>
 #include <cstdint>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <utility>
 
 namespace scene_rdl2 {
 namespace grid_util {
 
-Arg::Arg(const std::string &cmdLine, TlSvr *tlSvr) :
+Arg::Arg(const std::string& cmdLine, TlSvr* tlSvr) :
     mCurrArgId(0),
     mNextId(1),
     mTlSvr(tlSvr),
@@ -26,7 +28,7 @@ Arg::Arg(const std::string &cmdLine, TlSvr *tlSvr) :
     mComName = mOrg[0];
 }
 
-Arg::Arg(const std::string &cmdName, const std::string &argLine, TlSvr *tlSvr) :
+Arg::Arg(const std::string& cmdName, const std::string& argLine, TlSvr* tlSvr) :
     mComName(cmdName),
     mCurrArgId(0),
     mNextId(2),
@@ -38,7 +40,7 @@ Arg::Arg(const std::string &cmdName, const std::string &argLine, TlSvr *tlSvr) :
     setupArg(argLine);
 }
 
-Arg::Arg(int argc, char **argv, TlSvr *tlSvr) :
+Arg::Arg(int argc, char** argv, TlSvr* tlSvr) :
     mCurrArgId(0),
     mNextId(0),
     mTlSvr(tlSvr),
@@ -51,7 +53,7 @@ Arg::Arg(int argc, char **argv, TlSvr *tlSvr) :
     }
 
     shiftArg();
-    mComName = mOrg[0];
+    if (!mOrg.empty()) mComName = mOrg[0]; // argc might be 0
 }
 
 Arg
@@ -61,7 +63,7 @@ Arg::childArg()
 }
 
 Arg
-Arg::childArg(const std::string &comName)
+Arg::childArg(const std::string& comName)
 {
     return makeChildArg([&]() -> std::string { return comName; });
 }
@@ -71,7 +73,7 @@ Arg::currArgCmdLine() const
 {
     std::ostringstream ostr;
     for (size_t i = 0; i < size(); ++i) {
-        ostr << mArg[i];
+        ostr << escapeComment(mArg[i]);
         if (i != size() - 1) ostr << ' ';
     }
     return ostr.str();
@@ -81,16 +83,16 @@ bool
 Arg::noNeedToEvalTest(bool parserHasArg) const
 //
 // Parser object consists of option definitions and argument definitions (See Parser.h comment). Option
-// definition looks like "optA <A> <B>" and Argument definition looks like "<A> <B>" (this is empty option
-// name version of Option definition). This parserHasArg flag indicates Parser object has an Argument type
-// definition or not.
-//    
+// definition looks like "optA <A> <B>" and Argument definition looks like "<A> <B>" (i.e. an Option
+// definition without an option name). This parserHasArg flag indicates whether the Parser object has an
+// Argument type definition or not.
+//
 {
     if (emptyArg() && mComName.empty()) {
         // completely empty input
 
         if (!parserHasArg) {
-            // Parser does not have an argument definition and this Arg does not have any argument
+            // Parser does not have an argument definition and this Arg does not have any arguments
             // as well. So, we can safely return true (= no need to evaluate this arg).
             return true;
         }
@@ -101,10 +103,10 @@ Arg::noNeedToEvalTest(bool parserHasArg) const
     return false;
 }
 
-bool    
-Arg::isOpt(const std::vector<std::string> &nameTbl, bool caseSensitive)
+bool
+Arg::isOpt(const std::vector<std::string>& nameTbl, bool caseSensitive)
 {
-    for (auto &itr: nameTbl) {
+    for (const auto& itr: nameTbl) {
         if (isOpt(itr, caseSensitive)) return true;
     }
     return false;
@@ -119,25 +121,25 @@ Arg::shiftArgAll()
 }
 
 std::string
-Arg::warnMsgPrevVal(const std::string &msg) const
+Arg::warnMsgPrevVal(const std::string& msg) const
 {
     return errMsg("WARNING : ", msg, -1);
 }
 
 std::string
-Arg::warnMsgCurrVal(const std::string &msg) const
+Arg::warnMsgCurrVal(const std::string& msg) const
 {
     return errMsg("WARNING : ", msg, 0);
 }
 
 std::string
-Arg::warnMsgLastNext(const std::string &msg) const
+Arg::warnMsgLastNext(const std::string& msg) const
 {
     return errMsg("WARNING : ", msg, static_cast<int>(size()));
 }
 
 std::string
-Arg::warnMsgEvalOpt(const std::string &msg) const
+Arg::warnMsgEvalOpt(const std::string& msg) const
 {
     if (mComName.empty()) {
         return msg + " optName:" + mCurrOptName; // special case for top level parsing
@@ -147,7 +149,7 @@ Arg::warnMsgEvalOpt(const std::string &msg) const
 }
 
 std::string
-Arg::warnMsgEvalArg(const std::string &msg) const
+Arg::warnMsgEvalArg(const std::string& msg) const
 {
     if (mComName.empty()) {
         return msg + " argId:" + std::to_string(mCurrArgId); // special case for top level parsing
@@ -157,7 +159,7 @@ Arg::warnMsgEvalArg(const std::string &msg) const
 }
 
 bool
-Arg::msg(const std::string &msg) const
+Arg::msg(const std::string& msg) const
 {
     bool flag = true;
 
@@ -175,12 +177,12 @@ Arg::msg(const std::string &msg) const
     if (mMsgHandler) {
         if (!(mMsgHandler)(msg)) flag = false;
     }
-    
+
     return flag;
 }
 
 bool
-Arg::fmtMsg(const char *fmt, ...) const
+Arg::fmtMsg(const char* fmt, ...) const
 {
     if (std::string(fmt).empty()) return true;
 
@@ -213,18 +215,18 @@ Arg::show() const
     return ostr.str();
 }
 
-bool    
-Arg::verify(const std::string &comName,
-            const std::string &currOptName,
+bool
+Arg::verify(const std::string& comName,
+            const std::string& currOptName,
             size_t currArgId,
             size_t nextId,
-            const ArgTbl &arg,
-            const ArgTbl &org)
+            const ArgTbl& arg,
+            const ArgTbl& org)
 //
-// This function is designed for unitTest    
+// This function is designed for unit testing
 //
 {
-    auto isSameStrVec = [](const ArgTbl &a, const ArgTbl &b) {
+    auto isSameStrVec = [](const ArgTbl& a, const ArgTbl& b) {
         if (a.size() != b.size()) return false;
         for (size_t i = 0; i < a.size(); ++i) {
             if (a[i] != b[i]) return false;
@@ -246,18 +248,19 @@ Arg::verify(const std::string &comName,
 //------------------------------------------------------------------------------------------
 
 Arg
-Arg::makeChildArg(const std::function<std::string()> &childCmdNameGenFunc)
+Arg::makeChildArg(const std::function<std::string()>& childCmdNameGenFunc)
 {
     Arg arg;
 
     arg.mNextId = mNextId;
     arg.mTlSvr = mTlSvr;
     arg.mMsgHandler = mMsgHandler;
+    arg.mCerrOutput = mCerrOutput;
 
-    for (size_t i = 0; i < mOrg.size(); ++i) {
-        if (i >= mNextId) arg.mArg.emplace_back(mOrg[i]);
-        arg.mOrg.emplace_back(mOrg[i]);
-    }
+    // mArg is already shifted. Comments (words after '#') are removed at construction time only for
+    // command line string input. The argc/argv input does not treat '#' specially.
+    arg.mArg = mArg;
+    arg.mOrg = mOrg;
     arg.mComName = (childCmdNameGenFunc)();
 
     shiftArgAll(); // shift all for original arg
@@ -266,36 +269,20 @@ Arg::makeChildArg(const std::function<std::string()> &childCmdNameGenFunc)
 }
 
 void
-Arg::setupOrg(const std::string &cmdLine)
+Arg::setupOrg(const std::string& cmdLine)
 {
     // First argument (i.e. command name) is empty in this case because this is a top level command line
     mOrg.emplace_back(""); // empty first entry
 
-    std::string workCmdLine = processBlankNl(cmdLine);
-    if (workCmdLine.empty()) {
-        return;                 // empty
-    }
-
-    std::istringstream istr(workCmdLine);
-    std::string word;
-    while (std::getline(istr, word, ' ')) {
-        mOrg.emplace_back(word.c_str());
+    for (auto& word: splitCmdLine(cmdLine, true)) {
+        mOrg.emplace_back(std::move(word));
     }
 }
 
 void
-Arg::setupArg(const std::string &cmdLine)
+Arg::setupArg(const std::string& cmdLine)
 {
-    std::string workCmdLine = processComment(processBlankNl(cmdLine));
-    if (workCmdLine.empty()) {
-        return;                 // empty
-    }
-
-    std::istringstream istr(workCmdLine);
-    std::string word;
-    while (std::getline(istr, word, ' ')) {
-        mArg.emplace_back(word.c_str());
-    }
+    mArg = splitCmdLine(cmdLine, false);
 }
 
 void
@@ -311,9 +298,9 @@ Arg::shiftArg()
 }
 
 std::string
-Arg::errMsg(const std::string &msgTitle,
-            const std::string &msg,
-            const int errArgIdOffset) const
+Arg::errMsg(const std::string& msgTitle,
+            const std::string& msg,
+            int errArgIdOffset) const
 {
     std::ostringstream ostr;
     ostr << msgTitle << msg << " {\n"
@@ -358,13 +345,17 @@ std::string
 Arg::childCmdNameGen() const
 {
     std::string name;
-    if (!mComName.empty()) name = mComName + ' ';
-    name += mOrg[mOrg.size() - 1 - mArg.size()];
+    if (mNextId > 0 && mNextId <= mOrg.size()) {
+        if (!mComName.empty()) name = mComName + ' ';
+        name += mOrg[mNextId - 1]; // last consumed word. mOrg might include comment words
+    } else {
+        name = mComName;
+    }
     return name;
 }
 
 std::string
-Arg::showArgTbl(const std::string &msg, const ArgTbl &tbl) const
+Arg::showArgTbl(const std::string& msg, const ArgTbl& tbl) const
 {
     std::ostringstream ostr;
     ostr << msg << " total:" << tbl.size() << " {\n";
@@ -375,52 +366,70 @@ Arg::showArgTbl(const std::string &msg, const ArgTbl &tbl) const
     return ostr.str();
 }
 
-std::string
-Arg::processComment(const std::string &str) const
+Arg::ArgTbl
+Arg::splitCmdLine(const std::string& cmdLine, const bool includeComment) const
+//
+// Split the command line into words by blanks (including NL).
+// '#' starts a comment unless it is escaped by '\' (i.e. "\#" is a literal '#' in a word). Other '\' are
+// literal. Every word after the comment start is only returned if includeComment is true. The comment
+// part is not escape processed because it is kept only for message display.
+//
 {
-    const size_t i = str.find("#");
-    if (i == std::string::npos) return str;
-    return str.substr(0, i);
+    ArgTbl tbl;
+    std::string word;
+    bool inComment = false;
+
+    auto flushWord = [&]() {
+        if (!word.empty()) {
+            tbl.push_back(std::move(word));
+            word.clear();
+        }
+    };
+
+    for (size_t i = 0; i < cmdLine.size(); ++i) {
+        const char c = cmdLine[i];
+        if (!inComment && c == '\\' && i + 1 < cmdLine.size() && cmdLine[i + 1] == '#') {
+            word.push_back('#'); // escaped '#'
+            ++i;
+        } else if (c == '#' && !inComment) {
+            flushWord();
+            if (!includeComment) break;
+            inComment = true;
+            word.push_back(c);
+        } else if (std::isspace(static_cast<unsigned char>(c))) {
+            flushWord();
+        } else {
+            word.push_back(c);
+        }
+    }
+    flushWord();
+
+    return tbl;
 }
 
 std::string
-Arg::processBlankNl(const std::string &str) const
+Arg::escapeComment(const std::string& str)
 {
-    std::string tmpStr = str;
-    if (!tmpStr.empty()) {
-        tmpStr = addSpaceBeforeComment(tmpStr);
-        tmpStr = scene_rdl2::str_util::replaceNlToSingleSpace(tmpStr); // nl processing
-        tmpStr = scene_rdl2::str_util::trimBlank(tmpStr); // rm front/back blanks
-        tmpStr = scene_rdl2::str_util::replaceBlankToSingleSpace(tmpStr); // blank processing
+    std::string out;
+    for (const char c: str) {
+        if (c == '#') out.push_back('\\');
+        out.push_back(c);
     }
-    return tmpStr;
-}
-
-std::string
-Arg::addSpaceBeforeComment(const std::string &str) const
-{
-    const size_t pos = str.find("#");
-    if (pos == std::string::npos) return str;
-
-    std::string tmpStr;
-    for (size_t i = 0; i < str.size(); ++i) {
-        if (str[i] == '#') tmpStr.push_back(' ');
-        tmpStr.push_back(str[i]);
-    }
-    return tmpStr;
+    return out;
 }
 
 bool
-Arg::vaMsg(const char *fmt, va_list ap) const
+Arg::vaMsg(const char* fmt, va_list ap) const
 {
     // figure out proper buffer size
     int buffSize = 0;
     {
         va_list tmpAp;
         va_copy(tmpAp, ap); // we have to use va_copy in order to keep original ap
-        buffSize = vsnprintf(nullptr, 0, fmt, tmpAp);
+        buffSize = std::vsnprintf(nullptr, 0, fmt, tmpAp);
         va_end(tmpAp);
     }
+    if (buffSize < 0) return false; // formatting error
 
     std::string msgBuff(buffSize + 1, 0x0); // +1 is for terminator NULL
 
@@ -436,8 +445,8 @@ Arg::vaMsg(const char *fmt, va_list ap) const
     return msg(msgBuff);
 }
 
-bool    
-Arg::cmpOpt(const std::string &a, const std::string &b, bool caseSensitive) const
+bool
+Arg::cmpOpt(const std::string& a, const std::string& b, bool caseSensitive) const
 {
     std::string workA, workB;
     if (caseSensitive) {
@@ -460,11 +469,11 @@ Arg::cmpOpt(const std::string &a, const std::string &b, bool caseSensitive) cons
 
 // static function
 bool
-Arg::isBool(const std::string &str)
+Arg::isBool(const std::string& str)
 {
     using StrTbl = std::vector<std::string>;
-    auto multiEq = [&](const StrTbl &tbl) {
-        for (const auto &itr: tbl) {
+    auto multiEq = [&](const StrTbl& tbl) {
+        for (const auto& itr: tbl) {
             if (str_util::upperStr(str) == str_util::upperStr(itr)) return true;
         }
         return false;

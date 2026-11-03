@@ -1,13 +1,11 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include "TlSvr.h"
 
 #include <cstdarg> // va_start
+#include <functional>
 #include <memory>
 #include <string>
 #include <typeinfo> // typeid
@@ -20,15 +18,15 @@ class Arg
 //
 // This class keeps all argument values of a single command line and is used for command line parsing
 // logic (i.e. grid_util::Parser).
-// This Arg and Parser are mainly used for grid_util::DebugConsoleDriver's command line parsing
-// implementation. And this is heavily used for interactive debugging command-line control especially
-// arras multi-machine configurations.
+// This Arg and Parser are mainly used by grid_util::DebugConsoleDriver for command line parsing
+// implementation. They are heavily used for interactive debugging command-line control, especially
+// in arras multi-machine configurations.
 //
 {
 public:
     using ArgShPtr = std::shared_ptr<Arg>;
     using ArgTbl = std::vector<std::string>;
-    using MsgHandlerFunc = std::function<bool(const std::string &msg)>;
+    using MsgHandlerFunc = std::function<bool(const std::string& msg)>;
 
     Arg() :
         mCurrArgId(0),
@@ -37,58 +35,73 @@ public:
         mCerrOutput(true)
     {}
 
-    // Construct top-level Arg for Parser object from command line string.
-    // In this case, remove first/last blank and NL. then convert all blanks to a single space.
-    // Comment start is '#'
-    // All command-line data is converted into mArg and mComName is empty because this is top-level argument.
-    // tlSvr is used to send back messages if you set proper tlSvr address.
-    // (check the comment below of message related API section)
-    Arg(const std::string &cmdLine, TlSvr *tlSvr = nullptr);
+    // Construct a top-level Arg for the Parser object using a command line string.
+    // The command line is split into words by blanks (including NL).
+    // Comments start with '#'. All words after '#' are ignored as part of a comment.
+    // If you need a literal '#' in a word (e.g. file name), put '\' before it like "a\#1.exr".
+    // All other '\' are interpreted as literal. See escapeComment() as well.
+    // All command-line data is converted into mArg and mComName is empty because these are top-level
+    // arguments. tlSvr is used to send back messages if you set a proper tlSvr address.
+    // (check the comment below of the message related API section)
+    // Note: An Arg constructed using argc/argv does not have comment and escape processing.
+    explicit Arg(const std::string& cmdLine, TlSvr* tlSvr = nullptr);
 
     // Basically same as the previous Arg constructor.
     // The difference is that Arg is constructed by command-name with its argument line.
     // This constructor is not designed for top-level arguments.
-    Arg(const std::string &cmdName, const std::string &argLine, TlSvr *tlSvr = nullptr);
+    Arg(const std::string& cmdName, const std::string& argLine, TlSvr* tlSvr = nullptr);
 
     // Special constructor by traditional argc/argv style
-    Arg(int argc, char **argv, TlSvr *tlSvr = nullptr);
+    Arg(int argc, char** argv, TlSvr* tlSvr = nullptr);
 
-    Arg(const Arg &arg) = default; // copy constructor
-    ~Arg() {}
+    Arg(const Arg& arg) = default; // copy constructor
+    Arg(Arg&& arg) noexcept = default; // move constructor
+    Arg& operator =(const Arg& arg) = default;
+    Arg& operator =(Arg&& arg) noexcept = default;
+    ~Arg() = default;
 
     Arg childArg(); // create argument for child command
-    Arg childArg(const std::string &comName);
+    Arg childArg(const std::string& comName);
 
-    const std::string &comName() const { return mComName; }
+    // Convert '#' to "\#" in order to use the string as a part of the command line string (i.e. the
+    // argument of Arg(cmdLine) constructor) without being treated as a comment start.
+    // A string including blanks can not be a single word and still would be split into multiple words.
+    static std::string escapeComment(const std::string& str);
+
+    const std::string& comName() const { return mComName; }
     ArgTbl currArg() const { return mArg; }
+
+    // Convert the current arguments into a single command line string. '#' in each word is escaped
+    // to "\#" (see escapeComment()), so that re-parsing the returned string by Arg(cmdLine) (e.g. forwarding
+    // the rest of the command to another process) gives the same words without truncating by a comment.
     std::string currArgCmdLine() const;
-    void setCurrOptName(const std::string &name) { mCurrOptName = name; }
+    void setCurrOptName(const std::string& name) { mCurrOptName = name; }
     void setCurrArgId(size_t argId) { mCurrArgId = argId; }
-    
-    inline bool empty() const { return mOrg.empty(); } // check empty all
-    inline bool emptyArg() const { return mArg.empty(); } // check empty argument
+
+    inline bool empty() const { return mOrg.empty(); } // check if input is empty
+    inline bool emptyArg() const { return mArg.empty(); } // check if argument is empty
 
     bool noNeedToEvalTest(bool parserHasArg) const;
 
     inline bool isHelp(); // might change internal argId
 
     // following isOpt functions might change internal argId
-    inline bool isOpt(const std::string &name, bool caseSensitive = true);
-    bool isOpt(const std::vector<std::string> &nameTbl, bool caseSensitive = true);
+    inline bool isOpt(const std::string& name, bool caseSensitive = true);
+    bool isOpt(const std::vector<std::string>& nameTbl, bool caseSensitive = true);
 
     inline size_t size() const { return mArg.size(); }
 
     //
     // value getter
     //
-    const std::string & operator ()(size_t id = 0) const // exception(std::string err)
+    const std::string& operator ()(size_t id = 0) const // exception(std::string)
     {
         if (mArg.size() <= id) {
             throw errMsg("", "Argument id overrun id:" + std::to_string(id), static_cast<int>(id));
         }
         return mArg[id];
     }
-    template <typename T> T as(size_t id) // exception(std::string err)
+    template <typename T> T as(size_t id) // exception(std::string)
     {
         throw std::string("unknown T (typeid(T).name()=") + typeid(T).name() + std::string(") for as<T>");
     }
@@ -96,9 +109,9 @@ public:
     //
     // argument shift
     //
-    Arg &operator ++() { shiftArg(); return *this; } // ++arg
+    Arg& operator ++() { shiftArg(); return *this; } // ++arg
     Arg operator ++(int) { Arg old = *this; shiftArg(); return old; } // arg++
-    Arg &operator += (int off) // arg += off
+    Arg& operator += (int off) // arg += off
     {
         for (int i = 0; i < off; ++i) shiftArg();
         return *this;
@@ -123,16 +136,16 @@ public:
     // using setMessageHandler() API.
     //
     void setCerrOutput(bool flag) { mCerrOutput = flag; } // Message output condition for cerr
-    void setMessageHandler(const MsgHandlerFunc &callBack) { mMsgHandler = callBack; }
+    void setMessageHandler(const MsgHandlerFunc& callBack) { mMsgHandler = callBack; }
 
-    std::string warnMsgPrevVal(const std::string &msg) const;
-    std::string warnMsgCurrVal(const std::string &msg) const;
-    std::string warnMsgLastNext(const std::string &msg) const;
-    std::string warnMsgEvalOpt(const std::string &msg) const;
-    std::string warnMsgEvalArg(const std::string &msg) const;
+    std::string warnMsgPrevVal(const std::string& msg) const;
+    std::string warnMsgCurrVal(const std::string& msg) const;
+    std::string warnMsgLastNext(const std::string& msg) const;
+    std::string warnMsgEvalOpt(const std::string& msg) const;
+    std::string warnMsgEvalArg(const std::string& msg) const;
 
-    bool msg(const std::string &msg) const; // Message output to source of arg input
-    bool fmtMsg(const char *fmt, ...) const; // formatted message output to source of arg input
+    bool msg(const std::string& msg) const; // Message output to source of arg input
+    bool fmtMsg(const char* fmt, ...) const; // formatted message output to source of arg input
 
     // To retrieve the TlSvr pointer for sending back messages by TlSvr without Arg
     TlSvr* getTlSvr() { return mTlSvr; }
@@ -142,37 +155,35 @@ public:
     //
     std::string show() const;
 
-    bool verify(const std::string &comName,
-                const std::string &currOptName,
+    bool verify(const std::string& comName,
+                const std::string& currOptName,
                 size_t currArgId,
                 size_t nextId,
-                const ArgTbl &arg,
-                const ArgTbl &org); // for unitTest
+                const ArgTbl& arg,
+                const ArgTbl& org); // for unitTest
 
 protected:
-    Arg makeChildArg(const std::function<std::string()> &childCmdNameGenFunc);
+    Arg makeChildArg(const std::function<std::string()>& childCmdNameGenFunc);
 
-    void setupOrg(const std::string &cmdLine);
-    void setupArg(const std::string &cmdLine);
+    void setupOrg(const std::string& cmdLine);
+    void setupArg(const std::string& cmdLine);
     void shiftArg();
 
-    std::string errMsg(const std::string &msgTitle,
-                       const std::string &msg,
-                       const int errArgIdOffset) const;
+    std::string errMsg(const std::string& msgTitle,
+                       const std::string& msg,
+                       int errArgIdOffset) const;
     std::string getCmdLine() const;
-    std::string getErrorCmdLine(const size_t argId) const;
-    std::string strGen(const char c, const size_t size) const;
+    std::string getErrorCmdLine(size_t argId) const;
+    std::string strGen(char c, size_t size) const;
     std::string childCmdNameGen() const;
-    std::string showArgTbl(const std::string &msg, const ArgTbl &tbl) const;
+    std::string showArgTbl(const std::string& msg, const ArgTbl& tbl) const;
 
-    std::string processComment(const std::string &str) const;
-    std::string processBlankNl(const std::string &str) const;
-    std::string addSpaceBeforeComment(const std::string &str) const;
+    ArgTbl splitCmdLine(const std::string& cmdLine, bool includeComment) const;
 
-    bool cmpOpt(const std::string &a, const std::string &b, bool caseSensitive = true) const;
-    bool vaMsg(const char *fmt, va_list ap) const;
+    bool cmpOpt(const std::string& a, const std::string& b, bool caseSensitive = true) const;
+    bool vaMsg(const char* fmt, va_list ap) const;
 
-    static bool isBool(const std::string &str);
+    static bool isBool(const std::string& str);
 
     //------------------------------
 
@@ -184,20 +195,20 @@ protected:
     ArgTbl mArg;
     ArgTbl mOrg;
 
-    TlSvr *mTlSvr;
+    TlSvr* mTlSvr;
 
     bool mCerrOutput;
     MsgHandlerFunc mMsgHandler;
 };
 
-inline bool    
+inline bool
 Arg::isHelp()
 {
     return isOpt(std::vector<std::string>{"h", "help", "?", "-"}, false);
 }
 
 inline bool
-Arg::isOpt(const std::string &name, bool caseSensitive)
+Arg::isOpt(const std::string& name, bool caseSensitive)
 {
     if (mArg.size() > 0 && cmpOpt(mArg[0], name, caseSensitive)) {
         shiftArg();
