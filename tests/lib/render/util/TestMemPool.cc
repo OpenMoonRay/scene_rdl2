@@ -273,6 +273,12 @@ testMemPoolAllocator(const char *name,
     // parallel_for loop.
     //
     // TODO: Revisit this to see if oneTBB has fixed this issue.
+    //
+    // moonray's lib/rendering/mcrt_common/ThreadLocalState.cc hits this exact same TBB
+    // overflow-thread behavior in production code (MAX_OVERFLOW_POOL_SIZE, there sized to
+    // 64) -- see the comment above that #define for more detail/evidence gathered on the
+    // overflow count. The "+4" here is the same kind of empirically-chosen margin, not a
+    // value derived from any documented TBB guarantee.
     const unsigned overflowNumThreads = numThreads + 4;
 
     // The block pool must be sized for the same overflowNumThreads used for the TLS
