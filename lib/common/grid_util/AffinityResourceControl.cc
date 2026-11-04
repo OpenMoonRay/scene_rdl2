@@ -5,6 +5,7 @@
 #include "NumaUtil.h"
 #include "ShmAffinityInfo.h"
 
+#include <algorithm>
 #include <iostream> // debug
 #include <unistd.h> // getpid()
 #include <unordered_set>
