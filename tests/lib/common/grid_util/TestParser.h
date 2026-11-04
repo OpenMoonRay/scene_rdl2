@@ -21,6 +21,8 @@ public:
     void testParserArg();
     void testParserOptArg();
     void testParserCmdFile();
+    void testParserCmdFileDirectory();
+    void testParserCmdFileEmpty();
     void testParserReset();
     void testParserHelpWrap();
     void testParserSilentEvalError();
@@ -31,6 +33,8 @@ public:
     CPPUNIT_TEST(testParserArg);
     CPPUNIT_TEST(testParserOptArg);
     CPPUNIT_TEST(testParserCmdFile);
+    CPPUNIT_TEST(testParserCmdFileDirectory);
+    CPPUNIT_TEST(testParserCmdFileEmpty);
     CPPUNIT_TEST(testParserReset);
     CPPUNIT_TEST(testParserHelpWrap);
     CPPUNIT_TEST(testParserSilentEvalError);
@@ -62,7 +66,6 @@ protected:
     bool verifyCmdFileSkipLines() const;
     bool verifyCmdFileStopAtError() const;
     bool verifyCmdFileOpenError() const;
-    bool verifyCmdFileReadError() const;
 
     std::vector<InOutData> genInOutDataParserOpt() const;
     std::vector<InOutData> genInOutDataParserArg() const;

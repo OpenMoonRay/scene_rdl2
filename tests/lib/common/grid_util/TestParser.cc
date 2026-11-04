@@ -100,7 +100,86 @@ TestParser::testParserCmdFile()
     CPPUNIT_ASSERT("cmdFile skip blank and comment lines" && verifyCmdFileSkipLines());
     CPPUNIT_ASSERT("cmdFile stopAtError" && verifyCmdFileStopAtError());
     CPPUNIT_ASSERT("cmdFile open error" && verifyCmdFileOpenError());
-    CPPUNIT_ASSERT("cmdFile read error and empty file" && verifyCmdFileReadError());
+
+    TIME_END;
+}
+
+void
+TestParser::testParserCmdFileDirectory()
+{
+    TIME_START;
+
+    const Parser parser = parserConfigure(true, false);
+    const std::string dirName = std::filesystem::temp_directory_path().string();
+
+    for (const bool stopAtError : {true, false}) {
+        std::string outputMsg;
+        const bool flag = parser.mainCmdFile(dirName, stopAtError, outputMsg);
+
+        // Directory input may fail either when opening or when reading.
+        const std::string openError = "Cannot open file:" + dirName;
+        const std::string readError = "Cannot read file:" + dirName;
+
+        std::ostringstream diagnostic;
+        diagnostic << "Directory input must be rejected"
+                   << " path:{" << dirName << '}'
+                   << " stopAtError:" << std::boolalpha << stopAtError
+                   << " actualResult:" << flag
+                   << " actualMessage:{" << outputMsg << '}'
+                   << " expectedResult:false"
+                   << " expectedMessage:{" << openError
+                   << "} or {" << readError << '}';
+
+        CPPUNIT_ASSERT_MESSAGE(
+            diagnostic.str(),
+            !flag && (outputMsg == openError || outputMsg == readError));
+    }
+
+    TIME_END;
+}
+
+void
+TestParser::testParserCmdFileEmpty()
+{
+    TIME_START;
+
+    const Parser parser = parserConfigure(true, false);
+    const std::string cmdFilename = genTmpCmdFilename();
+
+    {
+        std::ofstream outfile(cmdFilename);
+        if (!outfile) {
+            rmCmdFile(cmdFilename);
+            CPPUNIT_FAIL("Cannot create empty command file:" + cmdFilename);
+        }
+
+        outfile.close();
+        if (!outfile) {
+            rmCmdFile(cmdFilename);
+            CPPUNIT_FAIL("Cannot close empty command file:" + cmdFilename);
+        }
+    }
+
+    for (const bool stopAtError : {true, false}) {
+        std::string outputMsg = "previous output";
+        const bool flag = parser.mainCmdFile(cmdFilename, stopAtError, outputMsg);
+
+        if (!flag || !outputMsg.empty()) {
+            rmCmdFile(cmdFilename);
+
+            std::ostringstream diagnostic;
+            diagnostic << "Empty command file must succeed and clear output"
+                       << " path:{" << cmdFilename << '}'
+                       << " stopAtError:" << std::boolalpha << stopAtError
+                       << " actualResult:" << flag
+                       << " actualMessage:{" << outputMsg << '}'
+                       << " expectedResult:true expectedMessage:{}";
+
+            CPPUNIT_FAIL(diagnostic.str());
+        }
+    }
+
+    rmCmdFile(cmdFilename);
 
     TIME_END;
 }
@@ -334,30 +413,6 @@ TestParser::verifyCmdFileOpenError() const
     return !flag && outputMsg.find("Cannot open file") != std::string::npos;
 }
 
-bool
-TestParser::verifyCmdFileReadError() const
-{
-    // A directory can be opened by ifstream on Linux but the first read fails. This must be reported as
-    // an error. It is not the same as an empty file.
-    const Parser parser = parserConfigure(true, false);
-    const std::string dirName = std::filesystem::temp_directory_path().string();
-    for (const bool stopAtError : {true, false}) {
-        std::string outputMsg;
-        const bool flag = parser.mainCmdFile(dirName, stopAtError, outputMsg);
-        if (flag || outputMsg.find("Cannot read file") == std::string::npos) return false;
-    }
-
-    // An empty file is a normal case and must succeed.
-    const std::string cmdFilename = genTmpCmdFilename();
-    {
-        std::ofstream outfile(cmdFilename);
-        if (!outfile) return false;
-    }
-    std::string outputMsg;
-    const bool flag = parser.mainCmdFile(cmdFilename, true, outputMsg);
-    rmCmdFile(cmdFilename);
-    return flag && outputMsg.empty();
-}
 Parser
 TestParser::parserConfigure(const bool setOpt, const bool setArg, const bool errUnknownOpt) const
 {

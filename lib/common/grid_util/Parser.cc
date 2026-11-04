@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -288,13 +289,26 @@ Parser::mainCmdFile(const std::string& cmdFilename,
         outputMessage = ostr.str();
         return false; // error
     }
+
+    // Some standard libraries treat reading a directory as normal EOF.
+    std::error_code statusError;
+    const bool isDirectory = std::filesystem::is_directory(cmdFilename, statusError);
+    if (statusError) {
+        outputMessage = "Cannot inspect file:" + cmdFilename + ": " + statusError.message();
+        return false;
+    }
+    if (isDirectory) {
+        outputMessage = "Cannot read file:" + cmdFilename;
+        return false;
+    }
+
     std::string currLine;
     while (std::getline(infile, currLine)) {
         cmdTbl.push_back(currLine);
     }
-    if (!infile.eof()) {
+    if (infile.bad() || !infile.eof()) {
         // The loop above ended by a read failure (e.g. the path is a directory or an I/O error happened).
-        // This is not a normal end of file and no command is evaluated.
+        // badbit is an error even if eofbit is also set; no command is evaluated.
         outputMessage = "Cannot read file:" + cmdFilename;
         return false; // error
     }
