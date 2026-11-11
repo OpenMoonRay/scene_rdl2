@@ -7,8 +7,7 @@ See the bindings README for the "Mirrors" and "Omits" comments."""
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import (EXTENSIVE_OBJECT_DEFAULTS, Rdl2TestCase, make_context, names,
-                            requires_test_dsos)
+from rdl2_test_util import EXTENSIVE_OBJECT_DEFAULTS, Rdl2TestCase, make_context, names
 
 
 # Test DSO class -> (to*() cast that should succeed, Python type it returns,
@@ -105,7 +104,6 @@ def expected_after_set(name):
     return value
 
 
-@requires_test_dsos
 class TestSceneObject(Rdl2TestCase):
 
     def setUp(self):

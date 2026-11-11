@@ -7,7 +7,7 @@
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import Rdl2TestCase, make_context, requires_test_dsos
+from rdl2_test_util import Rdl2TestCase, make_context
 
 
 BUILTIN_CLASSES = [
@@ -27,7 +27,6 @@ class TestSceneContext(Rdl2TestCase):
         self.context.setDsoPath("one:two:three")
         self.assertEqual(self.context.getDsoPath(), "one:two:three")
 
-    @requires_test_dsos
     def test_create_scene_class(self):
         # Mirrors TestSceneContext::testCreateSceneClass.
         scene_class = self.context.createSceneClass("ExampleObject")
@@ -36,7 +35,6 @@ class TestSceneContext(Rdl2TestCase):
                          "ExampleObject")
         self.assertEqual(self.context.getSceneClassNames().count("ExampleObject"), 1)
 
-    @requires_test_dsos
     def test_get_scene_class(self):
         # Mirrors TestSceneContext::testGetSceneClass.
         self.context.createSceneClass("ExampleObject")
@@ -45,7 +43,6 @@ class TestSceneContext(Rdl2TestCase):
         with self.assertRaises(ValueError):
             self.context.getSceneClass("NotASceneClass")
 
-    @requires_test_dsos
     def test_scene_class_exists(self):
         # Mirrors TestSceneContext::testSceneClassExists.
         self.assertFalse(self.context.sceneClassExists("ExampleObject"))
@@ -53,7 +50,6 @@ class TestSceneContext(Rdl2TestCase):
         self.assertTrue(self.context.sceneClassExists("ExampleObject"))
         self.assertFalse(self.context.sceneClassExists("NotASceneClass"))
 
-    @requires_test_dsos
     def test_iterate_scene_classes(self):
         # Mirrors TestSceneContext::testIterateSceneClasses.
         self.context.createSceneClass("ExampleObject")
@@ -63,7 +59,6 @@ class TestSceneContext(Rdl2TestCase):
         for name in names:
             self.assertEqual(self.context.getSceneClass(name).getName(), name)
 
-    @requires_test_dsos
     def test_create_scene_object(self):
         # Mirrors TestSceneContext::testCreateSceneObject. C++ compares pointers;
         # Python wrappers have no identity, so this checks a change made through
@@ -74,7 +69,6 @@ class TestSceneContext(Rdl2TestCase):
         pizza.set("awesomeness", 42)
         self.assertEqual(again.get("awesomeness"), 42)
 
-    @requires_test_dsos
     def test_get_scene_object(self):
         # Mirrors TestSceneContext::testGetSceneObject, with the same substitute
         # for pointer comparison as test_create_scene_object.
@@ -86,14 +80,12 @@ class TestSceneContext(Rdl2TestCase):
         with self.assertRaises(ValueError):
             self.context.getSceneObject("/seq/shot/not_a_pizza")
 
-    @requires_test_dsos
     def test_scene_object_exists(self):
         # Mirrors TestSceneContext::testSceneObjectExists.
         self.context.createSceneObject("ExampleObject", "/seq/shot/pizza")
         self.assertTrue(self.context.sceneObjectExists("/seq/shot/pizza"))
         self.assertFalse(self.context.sceneObjectExists("/seq/shot/not_a_pizza"))
 
-    @requires_test_dsos
     def test_iterate_scene_objects(self):
         # Mirrors TestSceneContext::testIterateSceneObjects.
         self.context.createSceneObject("ExampleObject", "/seq/shot/pizza")
@@ -104,7 +96,6 @@ class TestSceneContext(Rdl2TestCase):
         for name in names:
             self.assertEqual(self.context.getSceneObject(name).getName(), name)
 
-    @requires_test_dsos
     def test_set_scene_object(self):
         # Mirrors TestSceneContext::testSetSceneObject.
         self.context.createSceneObject("ExampleObject", "/seq/shot/pizza")
@@ -115,7 +106,6 @@ class TestSceneContext(Rdl2TestCase):
         self.assertEqual(second.get("awesomeness"), 42)
         self.assertEqual(first.get("awesomeness"), 42)
 
-    @requires_test_dsos
     def test_load_all_scene_classes(self):
         # Mirrors TestSceneContext::testLoadAllSceneClasses. In proxy mode the
         # misbehaving test DSOs load without running their constructors.
@@ -154,7 +144,6 @@ class TestSceneContext(Rdl2TestCase):
         other = self.context.createSceneObject("SceneVariables", "MoreVariables")
         self.assertEqual(other.getName(), "__SceneVariables__")
 
-    @requires_test_dsos
     def test_create_class_failure(self):
         # Mirrors TestSceneContext::testCreateClassFailure.
         count = len(self.context.getSceneClassNames())
@@ -162,7 +151,6 @@ class TestSceneContext(Rdl2TestCase):
             self.context.createSceneClass("ThrowDuringDeclare")
         self.assertEqual(len(self.context.getSceneClassNames()), count)
 
-    @requires_test_dsos
     def test_create_object_failure(self):
         # Mirrors TestSceneContext::testCreateObjectFailure.
         count = len(self.context.getSceneObjectNames())
@@ -241,7 +229,6 @@ class TestSceneContext(Rdl2TestCase):
     def test_no_primary_camera(self):
         self.assertIsNone(self.context.getPrimaryCamera())
 
-    @requires_test_dsos
     def test_geometry_and_geometry_set_lists(self):
         self.context.createSceneObject("FakeTeapot", "teapot")
         self.context.createSceneObject("GeometrySet", "geoms")

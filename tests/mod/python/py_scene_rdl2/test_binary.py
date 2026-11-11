@@ -9,8 +9,7 @@ import unittest
 
 import scene_rdl2
 from rdl2_test_util import (Rdl2TestCase, build_builtin_scene, check_builtin_scene,
-                            check_delta_encoding, check_null_references, check_roundtrip,
-                            requires_test_dsos)
+                            check_delta_encoding, check_null_references, check_roundtrip)
 
 
 class TestBinary(Rdl2TestCase):
@@ -19,22 +18,18 @@ class TestBinary(Rdl2TestCase):
         self.context = scene_rdl2.SceneContext()
         build_builtin_scene(self.context)
 
-    @requires_test_dsos
     def test_roundtrip(self):
         # Mirrors TestBinary::testRoundtrip.
         check_roundtrip(self, "roundtrip.rdlb")
 
-    @requires_test_dsos
     def test_transient_encoding(self):
         # Mirrors TestBinary::testTransientEncoding.
         check_roundtrip(self, "transient.rdlb", transient_encoding=True)
 
-    @requires_test_dsos
     def test_delta_encoding(self):
         # Mirrors TestBinary::testDeltaEncoding.
         check_delta_encoding(self, ".rdlb")
 
-    @requires_test_dsos
     def test_null_references(self):
         # Mirrors TestBinary::testNullReferences.
         check_null_references(self, ".rdlb")

@@ -7,11 +7,9 @@
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import (Rdl2TestCase, make_context, read_scene, requires_test_dsos,
-                            write_scene)
+from rdl2_test_util import Rdl2TestCase, make_context, read_scene, write_scene
 
 
-@requires_test_dsos
 class TestProxies(Rdl2TestCase):
     """The LibLaden* DSOs call into a library that does not exist, so they can
     only be instantiated as proxies."""

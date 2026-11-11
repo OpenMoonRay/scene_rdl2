@@ -6,10 +6,9 @@ bindings README for the "Mirrors" and "Omits" comments."""
 
 import unittest
 
-from rdl2_test_util import Rdl2TestCase, make_context, names, requires_test_dsos
+from rdl2_test_util import Rdl2TestCase, make_context, names
 
 
-@requires_test_dsos
 class TestSets(Rdl2TestCase):
 
     def setUp(self):

@@ -10,7 +10,7 @@ import unittest
 import scene_rdl2
 from rdl2_test_util import (Rdl2TestCase, build_builtin_scene, check_builtin_scene,
                             check_delta_encoding, check_null_references, check_roundtrip,
-                            make_context, requires_test_dsos)
+                            make_context)
 
 
 class TestAscii(Rdl2TestCase):
@@ -19,22 +19,18 @@ class TestAscii(Rdl2TestCase):
         self.context = scene_rdl2.SceneContext()
         build_builtin_scene(self.context)
 
-    @requires_test_dsos
     def test_roundtrip(self):
         # Mirrors TestAscii::testRoundtrip.
         check_roundtrip(self, "roundtrip.rdla")
 
-    @requires_test_dsos
     def test_delta_encoding(self):
         # Mirrors TestAscii::testDeltaEncoding.
         check_delta_encoding(self, ".rdla")
 
-    @requires_test_dsos
     def test_null_references(self):
         # Mirrors TestAscii::testNullReferences.
         check_null_references(self, ".rdla")
 
-    @requires_test_dsos
     def test_attribute_alias(self):
         # Mirrors TestAscii::testAttributeAlias.
         context = make_context()
@@ -49,7 +45,6 @@ class TestAscii(Rdl2TestCase):
         # get() also resolves aliases.
         self.assertEqual(pizza.get("int vector").toList(), [1, 2, 3])
 
-    @requires_test_dsos
     def test_denormals(self):
         # Mirrors TestAscii::testDenormals, which TestAscii.h currently leaves
         # out of the C++ suite for being slow.

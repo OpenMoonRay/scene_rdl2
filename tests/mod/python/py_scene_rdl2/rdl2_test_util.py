@@ -7,8 +7,9 @@ The tests import the scene_rdl2 module found on PYTHONPATH. Tests that need
 SceneClasses beyond the built-in ones use the test DSOs built for the C++
 scene_rdl2 unit tests (ExtensiveObject, FakeTeapot, LibLadenCamera, ...),
 located through the SCENE_RDL2_TEST_DSO_PATH environment variable. CTest sets
-both; when running by hand without SCENE_RDL2_TEST_DSO_PATH, the DSO-based
-tests are skipped.
+both; when running by hand, importing this module fails if
+SCENE_RDL2_TEST_DSO_PATH does not name a directory, so that the DSO-based tests
+cannot quietly go unrun.
 """
 
 import os
@@ -19,9 +20,9 @@ import scene_rdl2
 
 TEST_DSO_PATH = os.environ.get("SCENE_RDL2_TEST_DSO_PATH", "")
 
-requires_test_dsos = unittest.skipUnless(
-    TEST_DSO_PATH and os.path.isdir(TEST_DSO_PATH),
-    "SCENE_RDL2_TEST_DSO_PATH does not name a directory of scene_rdl2 test DSOs")
+if not os.path.isdir(TEST_DSO_PATH):
+    raise RuntimeError("SCENE_RDL2_TEST_DSO_PATH must name the directory of "
+                       "scene_rdl2 test DSOs, but is %r" % TEST_DSO_PATH)
 
 # Every attribute ExtensiveObject declares, with its default value as returned
 # by get() and converted to plain Python values by to_python().
@@ -74,8 +75,7 @@ EXTENSIVE_OBJECT_DEFAULTS = {
 def make_context(proxy_mode=False):
     """Returns a new SceneContext searching the test DSO directory."""
     context = scene_rdl2.SceneContext()
-    if TEST_DSO_PATH:
-        context.setDsoPath(TEST_DSO_PATH)
+    context.setDsoPath(TEST_DSO_PATH)
     context.setProxyModeEnabled(proxy_mode)
     return context
 
@@ -138,14 +138,28 @@ PIZZA_BLURRED = {
     "double": (5.0, 6.0),
     "rgb": ([0.2, 0.3, 0.4], [0.3, 0.4, 0.5]),
     "rgba": ([0.2, 0.3, 0.4, 0.5], [0.3, 0.4, 0.5, 0.6]),
-    "vec2f": ([1, 2], [2, 3]),
-    "vec2d": ([2, 3], [3, 4]),
-    "vec3f": ([1, 2, 3], [2, 3, 4]),
-    "vec3d": ([2, 3, 4], [3, 4, 5]),
-    "vec4f": ([1, 2, 3, 4], [2, 3, 4, 5]),
-    "vec4d": ([2, 3, 4, 5], [3, 4, 5, 6]),
-    "mat4f": (list(range(16, 0, -1)), list(range(32, 16, -1))),
-    "mat4d": (list(range(16, 0, -1)), list(range(32, 16, -1))),
+    "vec2f": ([1.0, 2.0], [2.0, 3.0]),
+    "vec2d": ([2.0, 3.0], [3.0, 4.0]),
+    "vec3f": ([1.0, 2.0, 3.0], [2.0, 3.0, 4.0]),
+    "vec3d": ([2.0, 3.0, 4.0], [3.0, 4.0, 5.0]),
+    "vec4f": ([1.0, 2.0, 3.0, 4.0], [2.0, 3.0, 4.0, 5.0]),
+    "vec4d": ([2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0]),
+    "mat4f": ([16.0, 15.0, 14.0, 13.0,
+               12.0, 11.0, 10.0, 9.0,
+               8.0, 7.0, 6.0, 5.0,
+               4.0, 3.0, 2.0, 1.0],
+              [32.0, 31.0, 30.0, 29.0,
+               28.0, 27.0, 26.0, 25.0,
+               24.0, 23.0, 22.0, 21.0,
+               20.0, 19.0, 18.0, 17.0]),
+    "mat4d": ([16.0, 15.0, 14.0, 13.0,
+               12.0, 11.0, 10.0, 9.0,
+               8.0, 7.0, 6.0, 5.0,
+               4.0, 3.0, 2.0, 1.0],
+              [32.0, 31.0, 30.0, 29.0,
+               28.0, 27.0, 26.0, 25.0,
+               24.0, 23.0, 22.0, 21.0,
+               20.0, 19.0, 18.0, 17.0]),
 }
 PIZZA_VALUES = {
     "bool": False,
@@ -158,14 +172,28 @@ PIZZA_VALUES = {
     "string_vector": ["c", "d"],
     "rgb_vector": [[0.5, 0.6, 0.7], [0.8, 0.9, 0.1]],
     "rgba_vector": [[0.5, 0.6, 0.7, 0.8], [0.9, 0.1, 0.2, 0.3]],
-    "vec2f_vector": [[4, 5], [6, 7]],
-    "vec2d_vector": [[4, 5], [6, 7]],
-    "vec3f_vector": [[4, 5, 6], [6, 7, 8]],
-    "vec3d_vector": [[1, 2, 3], [4, 5, 6]],
-    "vec4f_vector": [[4, 5, 6, 7], [7, 8, 9, 10]],
-    "vec4d_vector": [[1, 2, 3, 4], [5, 6, 7, 8]],
-    "mat4f_vector": [list(range(16, 0, -1)), list(range(32, 16, -1))],
-    "mat4d_vector": [list(range(16, 0, -1)), list(range(32, 16, -1))],
+    "vec2f_vector": [[4.0, 5.0], [6.0, 7.0]],
+    "vec2d_vector": [[4.0, 5.0], [6.0, 7.0]],
+    "vec3f_vector": [[4.0, 5.0, 6.0], [6.0, 7.0, 8.0]],
+    "vec3d_vector": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+    "vec4f_vector": [[4.0, 5.0, 6.0, 7.0], [7.0, 8.0, 9.0, 10.0]],
+    "vec4d_vector": [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]],
+    "mat4f_vector": [[16.0, 15.0, 14.0, 13.0,
+                      12.0, 11.0, 10.0, 9.0,
+                      8.0, 7.0, 6.0, 5.0,
+                      4.0, 3.0, 2.0, 1.0],
+                     [32.0, 31.0, 30.0, 29.0,
+                      28.0, 27.0, 26.0, 25.0,
+                      24.0, 23.0, 22.0, 21.0,
+                      20.0, 19.0, 18.0, 17.0]],
+    "mat4d_vector": [[16.0, 15.0, 14.0, 13.0,
+                      12.0, 11.0, 10.0, 9.0,
+                      8.0, 7.0, 6.0, 5.0,
+                      4.0, 3.0, 2.0, 1.0],
+                     [32.0, 31.0, 30.0, 29.0,
+                      28.0, 27.0, 26.0, 25.0,
+                      24.0, 23.0, 22.0, 21.0,
+                      20.0, 19.0, 18.0, 17.0]],
 }
 
 

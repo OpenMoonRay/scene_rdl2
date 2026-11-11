@@ -7,7 +7,7 @@ TestSceneContext::testSceneVariables is mirrored in test_scene_context.py."""
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import Rdl2TestCase, make_context, requires_test_dsos
+from rdl2_test_util import Rdl2TestCase, make_context
 
 
 class TestSceneVariables(Rdl2TestCase):
@@ -48,7 +48,6 @@ class TestSceneVariables(Rdl2TestCase):
     #     viewport = self.scene_vars.getSubViewport()
     #     self.assertIsNotNone(viewport)
 
-    @requires_test_dsos
     def test_camera(self):
         context = make_context(proxy_mode=True)
         scene_vars = context.getSceneVariables()

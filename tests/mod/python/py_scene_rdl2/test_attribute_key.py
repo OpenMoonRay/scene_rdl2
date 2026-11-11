@@ -8,7 +8,7 @@
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import Rdl2TestCase, make_context, requires_test_dsos
+from rdl2_test_util import Rdl2TestCase, make_context
 
 
 # ExtensiveObject attribute -> AttributeKey class for its type.
@@ -52,7 +52,6 @@ DISTINCT_ATTRIBUTES = {
 }
 
 
-@requires_test_dsos
 class TestAttributeKey(Rdl2TestCase):
 
     def setUp(self):

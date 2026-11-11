@@ -7,11 +7,9 @@
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import (EXTENSIVE_OBJECT_DEFAULTS, Rdl2TestCase, make_context,
-                            requires_test_dsos)
+from rdl2_test_util import EXTENSIVE_OBJECT_DEFAULTS, Rdl2TestCase, make_context
 
 
-@requires_test_dsos
 class TestSceneClass(Rdl2TestCase):
 
     def setUp(self):

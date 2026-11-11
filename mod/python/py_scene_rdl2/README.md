@@ -72,8 +72,8 @@ ctest -C Release -R py_scene_rdl2 --output-on-failure
 To run them by hand, point `PYTHONPATH` at the module's build directory and
 `SCENE_RDL2_TEST_DSO_PATH` at the directory holding the scene_rdl2 C++ unit
 test DSOs (ExtensiveObject, FakeTeapot, ...), which tests needing SceneClasses
-beyond the built-in ones use. Without `SCENE_RDL2_TEST_DSO_PATH`, those tests
-are skipped.
+beyond the built-in ones use. The tests fail at import if
+`SCENE_RDL2_TEST_DSO_PATH` does not name a directory.
 
 ```bash
 PYTHONPATH=<build>/moonray/scene_rdl2/mod/python/py_scene_rdl2 \

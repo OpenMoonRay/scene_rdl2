@@ -13,8 +13,7 @@ not run, since those methods do not exist yet."""
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import (Rdl2TestCase, make_context, names, read_scene,
-                            requires_test_dsos, write_scene)
+from rdl2_test_util import Rdl2TestCase, make_context, names, read_scene, write_scene
 
 
 def layer_rows(layer):
@@ -48,7 +47,6 @@ lights2 = LightSet("/seq/shot/fillrim") { fill, rim }
 """
 
 
-@requires_test_dsos
 class TestLayer(Rdl2TestCase):
 
     def setUp(self):

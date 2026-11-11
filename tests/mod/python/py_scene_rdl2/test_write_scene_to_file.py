@@ -8,7 +8,7 @@ import unittest
 import scene_rdl2
 from rdl2_test_util import (Rdl2TestCase, build_builtin_scene, build_roundtrip_scene,
                             check_builtin_scene, check_roundtrip_scene, make_context,
-                            read_scene, requires_test_dsos)
+                            read_scene)
 
 
 class TestWriteSceneToFile(Rdl2TestCase):
@@ -36,7 +36,6 @@ class TestWriteSceneToFile(Rdl2TestCase):
         with self.assertRaises(RuntimeError):
             scene_rdl2.writeSceneToFile(self.context, self.temp_path("scene.txt"))
 
-    @requires_test_dsos
     def test_every_attribute_type(self):
         original = build_roundtrip_scene()
         for ext in (".rdla", ".rdlb"):

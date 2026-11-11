@@ -7,8 +7,7 @@
 import unittest
 
 import scene_rdl2
-from rdl2_test_util import (Rdl2TestCase, make_context, names, read_scene,
-                            requires_test_dsos, write_scene)
+from rdl2_test_util import Rdl2TestCase, make_context, names, read_scene, write_scene
 
 
 TRACE_SET_RDLA = """
@@ -20,7 +19,6 @@ TraceSet("/seq/shot/traceset") {
 """
 
 
-@requires_test_dsos
 class TestTraceSet(Rdl2TestCase):
 
     def test_serialize(self):
