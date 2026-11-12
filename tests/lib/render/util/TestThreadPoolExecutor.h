@@ -1,4 +1,4 @@
-// Copyright 2024 DreamWorks Animation LLC
+// Copyright 2024-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
@@ -24,9 +24,13 @@ public:
     void tearDown() override {};
 
     void testBootAndShutdown();
+    void testCurrentThreadId();
+    void testCurrentPinnedCpuId();
 
     CPPUNIT_TEST_SUITE(TestThreadPoolExecutor);
     CPPUNIT_TEST(testBootAndShutdown);
+    CPPUNIT_TEST(testCurrentThreadId);
+    CPPUNIT_TEST(testCurrentPinnedCpuId);
     CPPUNIT_TEST_SUITE_END();
 
 private:

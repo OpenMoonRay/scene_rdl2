@@ -1,10 +1,11 @@
-// Copyright 2024-2025 DreamWorks Animation LLC
+// Copyright 2024-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #include "CpuAffinityMask.h"
 #include "ThreadPoolExecutor.h"
 
 #include <scene_rdl2/common/except/exceptions.h>
 
+#include <atomic>
 #include <iostream>
 #include <pthread.h> // pthread_setaffinity_np
 #include <sstream>
@@ -42,6 +43,13 @@ static TimeMeasurementOfShutdown shutdownTime;
 
 namespace scene_rdl2 {
 
+namespace {
+
+thread_local size_t sCurrentThreadId = ThreadPoolExecutor::kNotPoolThread;
+thread_local unsigned sCurrentPinnedCpuId = ThreadPoolExecutor::kNotPinnedCpuId;
+
+} // namespace
+
 ThreadExecutor::~ThreadExecutor()
 {
     mThreadShutdown = true; // This is the only place mThreadShutdown is set to true
@@ -49,10 +57,10 @@ ThreadExecutor::~ThreadExecutor()
 }
 
 void
-ThreadExecutor::boot(size_t threadId, ThreadPoolExecutor* poolExecutor, int pinCpuId)
+ThreadExecutor::boot(size_t threadId, ThreadPoolExecutor* poolExecutor, const unsigned pinnedCpuId)
 {
     mThreadId = threadId;
-    mPinCpuId = pinCpuId;
+    mPinnedCpuId = pinnedCpuId;
     mPoolExecutor = poolExecutor;
 
 #   ifdef DEBUG_MSG_THREAD
@@ -101,7 +109,10 @@ ThreadExecutor::threadStateStr(const ThreadState& stat)
 void
 ThreadExecutor::threadMain()
 {
+    sCurrentThreadId = mThreadId;
+
     pinThreadToCpu();
+    sCurrentPinnedCpuId = mPinnedCpuId;
 
     // First of all change threadState condition and do notify_one to caller
     {
@@ -157,8 +168,10 @@ ThreadExecutor::pinThreadToCpu()
 // might throw except::RuntimeError when it fails
 //
 {
-#ifndef PLATFORM_APPLE
-    if (mPinCpuId == ~static_cast<int>(0)) return; // no cpu affinity
+#ifdef PLATFORM_APPLE
+    mPinnedCpuId = kNotPinnedCpuId;
+#else // else of PLATFORM_APPLE
+    if (mPinnedCpuId == kNotPinnedCpuId) return; // no cpu affinity
 
     auto showError = [&](const std::string& funcName, const bool flag) {
         auto errorStr = [](int errorNo) {
@@ -176,7 +189,7 @@ ThreadExecutor::pinThreadToCpu()
     };
 
     CpuAffinityMask mask; // might throw exception
-    mask.set(mPinCpuId);
+    mask.set(mPinnedCpuId);
 
     pthread_t thread = pthread_self();
     int flag = pthread_setaffinity_np(thread, mask.getMaskSize(), mask.getMaskPtr());
@@ -196,7 +209,7 @@ ThreadExecutor::pinThreadToCpu()
         std::ostringstream ostr;
         ostr << "Set returned by pthread_getaffinity_np()"
              << " threadId:" << mThreadId
-             << " requested:" << mPinCpuId
+             << " requested:" << mPinnedCpuId
              << " contained:";
         for (size_t j = 0; j < mask.getNumCpu(); ++j) {
             if (mask.isSet(j)) ostr << "CPU" << j << ' ';
@@ -205,7 +218,7 @@ ThreadExecutor::pinThreadToCpu()
         std::cerr << ostr.str();
     }
 #   endif // end DEBUG_MSG_THREAD_CPUAFFINITY
-#endif // end ifndef PLATFORM_APPLE
+#endif // end of Not PLATFORM_APPLE
 }
 
 //------------------------------------------------------------------------------------------
@@ -217,7 +230,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t threadTotal, const CalcCpuIdFunc& 
 //
 {
     auto cpuId = [&](size_t id) {
-        return (!cpuIdFunc) ? ~static_cast<int>(0) : static_cast<int>(cpuIdFunc(id));
+        return (!cpuIdFunc) ? ThreadExecutor::kNotPinnedCpuId : cpuIdFunc(id);
     };
 
     // sequentially boot all threads here.
@@ -230,6 +243,20 @@ ThreadPoolExecutor::ThreadPoolExecutor(size_t threadTotal, const CalcCpuIdFunc& 
     ostr << ">> ThreadPoolExecutor.cc ThreadPoolExecutor() threadTotal:" << threadTotal << " done\n";
     std::cerr << ostr.str();
 #   endif // end DEBUG_MSG_THREAD_POOL
+}
+
+// static function
+size_t
+ThreadPoolExecutor::getCurrentThreadId()
+{
+    return sCurrentThreadId;
+}
+
+// static function
+unsigned
+ThreadPoolExecutor::getCurrentPinnedCpuId()
+{
+    return sCurrentPinnedCpuId;
 }
 
 void

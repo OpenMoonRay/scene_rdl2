@@ -30,7 +30,7 @@ set_property(TARGET ${component}
 
 target_include_directories(${component}
     PUBLIC
-	${Log4cplus_INCLUDE_DIRS}
+    ${Log4cplus_INCLUDE_DIRS}
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
 )
@@ -39,7 +39,7 @@ target_link_libraries(${component}
     PUBLIC
         ${PROJECT_NAME}::render_logging
     PUBLIC
-        Log4cplus::Log4cplus
+        Log4cplus::log4cplus
 )
 
 # If at Dreamworks add a SConscript stub file so others can use this library.

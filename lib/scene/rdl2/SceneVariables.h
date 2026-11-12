@@ -47,6 +47,13 @@ enum class ShadowTerminatorFix
     COSINE_COMPENSATION = 4
 };
 
+enum class TextureUpdateMode
+{
+    OFF = 0,
+    LIGHTS_AND_LIGHT_FILTERS = 1,
+    FULL = 2
+};
+
 /**
  * The SceneVariables are a SceneObject which contain render globals. This
  * object is created by the SceneContext when it is constructed, and the context
@@ -383,6 +390,16 @@ public:
 
     // capture multiple layers of presence for cryptomatte
     static AttributeKey<Bool> sCryptomatteMultiPresence;
+
+    //
+    // moonray_gui texture file watching
+    //
+
+    // Controls which textures moonray_gui monitors for on-disk changes.
+    // OFF (0): no texture watching.
+    // LIGHTS_AND_LIGHT_FILTERS (1): only .exr/.tx files referenced by lights and light filters.
+    // FULL (2): all .exr/.tx files referenced by any scene object.
+    static AttributeKey<Int> sTextureUpdateMode;
 };
 
 } // namespace rdl2

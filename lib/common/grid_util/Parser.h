@@ -1,4 +1,4 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2026 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
@@ -7,6 +7,9 @@
 #include <scene_rdl2/render/util/StrUtil.h>
 
 #include <functional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace scene_rdl2 {
 namespace grid_util {
@@ -16,13 +19,13 @@ namespace grid_util {
 //
 // --- Abstract and topics ---
 //
-// Parser class provides simple command-line parsing logic which is driven by user-defined command definitions
-// as a pretty easy way. 
+// Parser class provides simple command-line parsing logic driven by user-defined command definitions
+// in an easy way.
 //
 // There are several runtime topics
 // - Help usage message is automatically generated based on the user-defined command definitions.
-// - Typical procedure to dump help is call Parser::main(Arg("help")) (See Arg::isHelp())
-// - Comment for command-line starts with '#'
+// - Typical procedure to dump help is to call Parser::main(Arg("help")) (See Arg::isHelp())
+// - Comments for the command-line start with '#'. Use "\#" if you need a literal '#' in a word. (See Arg.h)
 // - Proper error messages are output when Parser::main() detects error internally.
 //
 // This Parser implementation is heavily used by debugConsole feature for interactive debugging under arras
@@ -38,47 +41,46 @@ namespace grid_util {
 // - construct Parser object.
 //
 // 2) Configure options and arguments
-// - There are 2 types of parser item configuration. a) options and b) arguments.
-// - You can combine options and arguments into the same Parser object.
+// - There are 2 types of parser item configurations: a) options and b) arguments.
+// - You can combine both options and arguments into the same Parser object.
 //
 // 2-a) options
-//   - Option is like "optA <a> <b>".
-//   - Option is recognized by option name. In this case, the option name is "optA".
-//   - This optA requires 2 option argument <a> and <b>
-//   - You can configure many options as you want by multiple calls of opt() API.
-//   - opt() exec order does not matter.
-//   - Internally, the first letter of option argument '-' would be ignored.
-//   - with '-' option name definition like "-optA", both "-optA" and "optA" would be recognized the same.
-//   - without '-' option name definition like "optB" both "-optB" and "optB" would be recognized the same.
+//   - An option is like "optA <a> <b>".
+//   - The option is recognized by its option name. In this case, the option name is "optA".
+//   - This optA requires 2 option arguments <a> and <b>
+//   - You can configure as many options as you want using multiple calls of opt() API.
+//   - opt() execution order does not matter.
+//   - Internally, the '-' symbol in front of the option name is ignored. So, the option names "-optA" and
+//     "optA" would be treated identically.
 // 2-b) arguments
-//   - You can configure many arguments as you want by arg() API.
-//   - Argument is like "<A> <B>". This is not optional, you have to always set <A> and <B>.
-//   - You get an error If you don't set <A> and <B>.
-//   - You can configure many arguments as you want by multiple calls of arg() API.
+//   - You can configure many arguments as you want using the arg() API.
+//   - Arguments can be provided like "<A> <B>". This is not optional, you have to always set <A> and <B>.
+//   - You will get an error if you don't set both <A> and <B>.
 //   - Order of arg() call DOES matter.
 //   - If you configure 2 argument items, for example,
 //     1st one is arg("<A> <B>", ...) and 2nd one is arg("<C>", ...).
-//     In this case, you have to set 3 arguments like "<0> <1> <2>" at the command-line. 
+//     In this case, you have to set 3 arguments like "<0> <1> <2>" at the command-line.
 //   - Value <0> and <1> go to <A> and <B>. Value<2> goes to <C>.
 //   - You get errors If you don't set 3 arguments.
 //
 // 3) Evaluate command-line
 // - You construct an Arg object based on the command-line information. We have several ways to construct
 //   an Arg object. (See Arg.h)
-// - Evaluation of this Arg object is simple. just call Parser::main(Arg &arg)
+// - Evaluation of this Arg object is simple. just call Parser::main(Arg& arg)
 //
 //
 // --- message output from parser action function ---
 //
 // In order to output (= printout) messages from parser action function, Arg object has msg() method.
-// Using Arg::msg() is strongly recommended rather than directly use std::{cour,cerr}.
+// Using Arg::msg() is strongly recommended rather than directly use std::{cout,cerr}.
 // Basically Arg::msg() API printouts string data to the std::cerr as default.
 // Actually, you can configure more options to the Arg::msg() action.
-// We can configure the Arg object to send a message to the tlSvr (telnet-server) client if this Arg object
-// is constructed by an incoming command-line string received by tlSvr.
+// We can configure the Arg object to send a message to the tlSvr (telnet-server) client.
+// This is applicable if this Arg object is constructed by an incoming command-line string
+// received by tlSvr.
 // We can also set a special message handler to the Arg object as well.
 // How to configure tlSvr and/or message handler is totally up to the Arg object construction code before
-// you call Parser::main(). (unitTest code might be a good example. See unittest/TestParser.cc and find
+// you call Parser::main(). (unitTest code might be a good example. See tests/lib/common/grid_util/TestParser.cc and find
 // setMessageHandler())
 // In order to easily control where the printout message goes, using Arg::msg() is strongly recommended
 // inside the parser action function.
@@ -97,17 +99,17 @@ namespace grid_util {
 //   parser.opt("foo", // set option name
 //              "<a> <b>", // set 2 option arguments a and b, separated by ' '
 //              "option foo", // short message for usage
-//              [&](Arg &arg) -> bool { // parser action function
+//              [&](Arg& arg) -> bool { // parser action function
 //                  int a = arg.as<int>(0); // get 1st argument as int
 //                  double b = arg.as<double>(1); // get 2nd argument as double
 //                  arg += 2; // increment internal argument id by 2 for the rest of the commands
 //                  ... do something here using a and b ...
-//                  return result; // return parser action function result condision
+//                  return result; // return parser action function result condition
 //              });
 //   parser.opt("bar", // set option name
 //              "<c>", // set single option argument
 //              "option bar", // short message for usage
-//              [&](Arg &arg) -> bool { // parser action function
+//              [&](Arg& arg) -> bool { // parser action function
 //                  float c = arg.as<float>(0); // get 1st argument as float
 //                  arg++; // increment internal argument id for the rest of the command
 //                  ... do something here using c ...
@@ -117,7 +119,7 @@ namespace grid_util {
 //
 //   parser.main(Arg("help")); // display help usage message of above parser option configuration.
 //   // help usage message would be like follows (may change depending on the versions).
-//   //   Description : very simple option only definition
+//   //   [Description] : very simple option only definition
 //   //   [Command]
 //   //     bar <c>     : option bar
 //   //     foo <a> <b> : option foo
@@ -128,25 +130,25 @@ namespace grid_util {
 //   parser.main(Arg("baz a b c")); // main() returns false due to unknown option baz
 //
 // Example-2 : option and argument configuration - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//    
+//
 //   // construction and set description
 //   Parser parser;
 //   parser.description("option and argument definition");
 //
-//   // configure 2 options and 2 arguements
+//   // configure 2 options and 2 arguments
 //   parser.opt("foo", "<a> <b>", "option foo",
-//              [&](Arg &arg) -> bool {
+//              [&](Arg& arg) -> bool {
 //                 ... do something here for option foo ...
-//                 return result; // return parser action function result condision
+//                 return result; // return parser action function result condition
 //              });
 //   parser.opt("bar", "<c>", "option bar",
-//              [&](Arg &arg) -> bool {
+//              [&](Arg& arg) -> bool {
 //                 ... do something here for option bar ...
 //                 return result; // return parser action function result condition
 //              });
 //   parser.arg("<A> <B>", // set 2 arguments A and B, separated by ' '
 //              "2 args", // short message for usage
-//              [&](Arg &arg) -> bool { // parser action function
+//              [&](Arg& arg) -> bool { // parser action function
 //                  unsigned long A = arg.as<unsigned long>(0); // get 1st argument as u_long
 //                  std::string B = arg(1); // get 2nd argument as std::string
 //                  arg += 2;
@@ -155,7 +157,7 @@ namespace grid_util {
 //              });
 //   parser.arg("<C>", // set single argument C
 //              "1 arg", // short message for usage
-//              [&](Arg &arg) -> bool { // parser action function
+//              [&](Arg& arg) -> bool { // parser action function
 //                  float C = arg.as<float>(0); // get 1st argument as float
 //                  arg++; // increment internal argument id for the rest of the command
 //                  return result; // return parser action function result condition
@@ -163,7 +165,7 @@ namespace grid_util {
 //
 //   parser.main(Arg("help")); // display help usage message of above parser option configuration.
 //   // help usage message would be like follows (may change depending on the versions).
-//   //   Description : option and argument definition
+//   //   [Description] : option and argument definition
 //   //   [Argument]
 //   //     <A> <B> : 2 args
 //   //     <C>     : 1 arg
@@ -183,20 +185,20 @@ namespace grid_util {
 //   structure.
 //
 //   // construction and set description
-//   Parser parse, parserChild;
+//   Parser parser, parserChild;
 //   parser.description("child command definition");
 //
 //   // configure 1 normal option and 1 child command option for top-level command parsing
 //   parser.opt("foo", "<a> <b>", "option foo",
-//              [&](Arg &arg) -> bool {
+//              [&](Arg& arg) -> bool {
 //                 ... do something here for option foo ...
-//                 return result; // return parser action function result condision
+//                 return result; // return parser action function result condition
 //              });
 //   parser.opt("baz", // set option name
-//              "...command..., // No strict rules to use this string but this indicates the need for
+//              "...command...", // No strict rules to use this string but this indicates the need for
 //                              // at least 1 option argument and all arguments go to the child command.
 //              "command for baz", // short message for usage
-//              [&](Arg &arg) -> bool { // parser action function
+//              [&](Arg& arg) -> bool { // parser action function
 //                 // call child parser object with childArg which contents all the rest of the arguments
 //                 return parserChild.main(arg.childArg());
 //              });
@@ -204,28 +206,28 @@ namespace grid_util {
 //   // configure child command parser object w/ single option definition
 //   parserChild.description("child command");
 //   parserChild.opt("bar", "<c>", "option bar",
-//                  [&](Arg &arg) -> bool { // parser action function
+//                  [&](Arg& arg) -> bool { // parser action function
 //                      // printout argument <c>
 //                      return arg.msg("bar" + std::to_string((arg++).as<float>(0)) + '\n');
 //                  });
 //
 //   parser.main(Arg("help")); // display help usage message of top level parsing configuration
 //   // help usage message would be like follows (may change depending on the versions).
-//   //   Description : top level command definition
+//   //   [Description] : child command definition
 //   //   [Command]
 //   //     baz ...command... : child command baz
 //   //     foo <a> <b>       : option foo
 //   parser.main(Arg("baz help")); // display help usage message of baz child command
 //   // help usage message would be like follows (may change depending on the versions).
-//   //   Usage : baz [options]
-//   //   Description : child command
+//   //   [Usage] : baz [options]
+//   //   [Description] : child command
 //   //   [Options]
 //   //     bar <c> : option bar
 //   parser.main(Arg("foo a b")); // evaluate top level foo option w/ option argument a and b
 //   parser.main(Arg("baz bar 1.23")); // evaluate child option baz w/ option argument 1.23
 //
 //
-// Other Example - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+// Other Example - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 //   Other example would be found in the following implementations
 //       moonray::rndr::RenderContextConsoleDriver::parserConfigure()
 //       moonray::rndr::RenderContext::parserConfigure()
@@ -236,7 +238,7 @@ namespace grid_util {
 //       mcrt_computation::RenderContextDriver::debugCommandParserConfigure()
 //       arras_render::debugConsoleSetup()
 //
-    
+
 class ParserItem
 //
 // This class defines single command/option action for command-line parsing.
@@ -256,17 +258,8 @@ public:
                const std::string& name,
                const std::string& argMsg,
                const std::string& shortMsg,
-               const ParserFunc& parserFunc) // parser action function
-        : mItemType(itemType)
-        , mName(str_util::trimBlank(name))
-        , mArgMsg(cleanStr(argMsg))
-        , mShortMsg(shortMsg)
-        , mParserFunc(parserFunc)
-        , mArgCount(0)
-    {
-        mArgCount = computeArgCount();
-    }
-    ~ParserItem() {}
+               ParserFunc parserFunc); // parser action function
+    ~ParserItem() = default;
 
     ItemType getItemType() const { return mItemType; }
     bool isOpt() const { return (mItemType == ItemType::OPT); }
@@ -276,7 +269,7 @@ public:
     const std::string& argMsg() const { return mArgMsg; }
     const std::string& shortMsg() const { return mShortMsg; }
 
-    std::string showShortMsgWithConstLen(const size_t offsetShortMsg, const size_t maxLen) const;
+    std::string showShortMsgWithConstLen(size_t offsetShortMsg, size_t maxLen) const;
 
     size_t getNameLen() const { return mName.size(); }
     size_t getArgMsgLen() const { return mArgMsg.size(); }
@@ -288,14 +281,7 @@ public:
     std::string show() const;
 
 private:
-    static std::string cleanStr(const std::string& arg) {
-        std::string workStr = str_util::trimBlank(arg);
-        workStr = str_util::replaceBlankToSingleSpace(workStr);
-        return workStr;
-    }
     size_t computeArgCount() const;
-
-    static std::string showItemType(const ItemType& itemType);
 
     //------------------------------
 
@@ -316,16 +302,13 @@ class Parser
 // This Parser is mainly used for grid_util::DebugConsoleDriver's command line parsing implementation.
 // And this is heavily used for interactive debugging command-line control especially arras multi-machine
 // configurations.
-// 
+//
 {
 public:
-    using ParserFunc = std::function<bool(Arg &)>;
+    using ParserFunc = std::function<bool(Arg&)>;
 
-    Parser()
-        : mErrorUnknownOption(true)
-        , mTotalArgCount(0)
-    {}
-    ~Parser() {}
+    Parser() = default;
+    ~Parser() = default;
 
     void description(const std::string& str) { mDescription = str; }
 
@@ -333,13 +316,20 @@ public:
     // false : main() return true when unknown option condition
     void setErrorUnknownOption(const bool flag) { mErrorUnknownOption = flag; }
 
-    void reset() { mDescription.clear(); mParserItemTbl.clear(); }
+    // true : no error message is output by Parser::main() when the evaluation result is false.
+    //        This applies to all error cases (parse errors and exceptions thrown inside the parser action
+    //        function). This is useful if returning false is not an error case.
+    //        Messages output by the parser action function itself are not affected.
+    // false : error message returns by arg.msg() when main() evaluation failed (default)
+    void setSilentEvalError(const bool flag) { mSilentEvalError = flag; }
+
+    void reset() { mDescription.clear(); mParserItemTbl.clear(); mTotalArgCount = 0; }
 
     // Configure option
     void opt(const std::string& name,
              const std::string& argMsg,
              const std::string& shortMsg,
-             ParserFunc&& parserFunc) {
+             ParserFunc parserFunc) {
         mParserItemTbl.emplace_back(ParserItem::ItemType::OPT,
                                     name,
                                     argMsg,
@@ -350,7 +340,7 @@ public:
     // Configure argument
     void arg(const std::string& argMsg,
              const std::string& shortMsg,
-             ParserFunc&& parserFunc) {
+             ParserFunc parserFunc) {
         mParserItemTbl.emplace_back(ParserItem::ItemType::ARG,
                                     "", // not using
                                     argMsg,
@@ -362,28 +352,40 @@ public:
     // Evaluate argument
     bool main(Arg& arg) const;
     bool main(Arg&& arg) const { Arg tmpArg = arg; return main(tmpArg); }
+    // Evaluate a single command line string. All messages output by arg.msg() are collected into
+    // outputMessage (not output to cerr). Multiple messages are joined by '\n' and the trailing '\n'
+    // of the whole outputMessage is removed.
     bool main(const std::string& singleCommandLine, std::string& outputMessage) const;
+    // Evaluate each line of the command file by main(). One line is one command line.
+    // Blank lines and comment-only lines (starting with '#') are skipped.
+    // stopAtError = true : stop at the first failed line and return false. outputMessage includes the
+    //                      command file dump with the error line marked (lineId starts from 0).
+    // stopAtError = false : evaluate all lines even if some lines fail, and return false if any line
+    //                       failed. outputMessage includes the messages of all lines.
+    // return true if the file is empty or all lines are evaluated successfully.
+    // return false (outputMessage has the reason) if the file can not be opened or read (e.g. a directory).
+    bool mainCmdFile(const std::string& cmdFilename, bool stopAtError, std::string& outputMessage) const;
 
     std::string show() const;
 
 protected:
-    std::string usage(const std::string &comName, const bool sort) const;
+    std::string usage(const std::string& comName, bool sort) const;
     std::string argListOneLine() const;
     std::string argListDetail() const;
-    std::string optList(const bool sort) const;
-    bool hasArgument() const { return (itemCount(ParserItem::ItemType::ARG)) ? true : false; }
-    bool hasOptions() const { return (itemCount(ParserItem::ItemType::OPT)) ? true : false; }
-    int itemCount(const ParserItem::ItemType itemType) const;
-    int totalArgCount() const;
-    static std::string spaces(const size_t total);
+    std::string optList(bool sort) const;
+    bool hasArgument() const { return itemCount(ParserItem::ItemType::ARG) != 0; }
+    bool hasOptions() const { return itemCount(ParserItem::ItemType::OPT) != 0; }
+    size_t itemCount(ParserItem::ItemType itemType) const;
+    size_t totalArgCount() const;
     std::string showParserItemTbl() const;
 
     //------------------------------
 
     std::string mDescription;
 
-    bool mErrorUnknownOption;
-    int mTotalArgCount;
+    bool mErrorUnknownOption {true};
+    bool mSilentEvalError {false};
+    size_t mTotalArgCount {0};
     std::vector<ParserItem> mParserItemTbl;
 };
 

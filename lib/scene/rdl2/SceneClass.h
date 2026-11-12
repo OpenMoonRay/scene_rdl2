@@ -258,7 +258,7 @@ public:
      * @param   name    The name of the attribute you want.
      * @return  true if the attribute exists on this class
      */
-    finline bool hasAttribute(const std::string& name);
+    finline bool hasAttribute(const std::string& name) const;
 
     /**
      * Retrieves a typed AttributeKey for the attribute with the given name.
@@ -806,7 +806,7 @@ SceneClass::getAttribute(const std::string& name)
 }
 
 bool
-SceneClass::hasAttribute(const std::string& name)
+SceneClass::hasAttribute(const std::string& name) const
 {
     return mNameMap.find(name) != mNameMap.end();
 }

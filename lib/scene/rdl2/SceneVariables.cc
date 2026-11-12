@@ -100,6 +100,8 @@ AttributeKey<Int>  SceneVariables::sTextureCacheSizeMb;
 AttributeKey<Int>  SceneVariables::sTextureFileHandleCount;
 AttributeKey<Bool> SceneVariables::sFastGeomUpdate;
 
+AttributeKey<Int>  SceneVariables::sTextureUpdateMode;
+
 AttributeKey<Bool>   SceneVariables::sCheckpointActive;
 AttributeKey<Float>  SceneVariables::sCheckpointInterval;
 AttributeKey<Int>    SceneVariables::sCheckpointQualitySteps;
@@ -1147,6 +1149,23 @@ SceneObjectInterface SceneVariables::declare(SceneClass& sceneClass)
         SceneClass::sComment,
         "Determines whether to record presence bounces as separate cryptomatte samples.");
 
+    sTextureUpdateMode = sceneClass.declareAttribute<Int>("texture_update_mode",
+        Int(TextureUpdateMode::LIGHTS_AND_LIGHT_FILTERS),
+        rdl2::FLAGS_ENUMERABLE,
+        INTERFACE_GENERIC,
+        {"texture update mode"});
+    sceneClass.setMetadata(sTextureUpdateMode, "label", "texture update mode");
+    sceneClass.setEnumValue(sTextureUpdateMode, Int(TextureUpdateMode::OFF), "off");
+    sceneClass.setEnumValue(sTextureUpdateMode, Int(TextureUpdateMode::LIGHTS_AND_LIGHT_FILTERS), "lights and light filters only");
+    sceneClass.setEnumValue(sTextureUpdateMode, Int(TextureUpdateMode::FULL), "full");
+    sceneClass.setMetadata(sTextureUpdateMode,
+        SceneClass::sComment,
+        "Controls which texture files (.exr and .tx) moonray_gui monitors for on-disk changes and automatically "
+        "updates the render when they change.\n"
+        "\t\toff: no texture watching.\n"
+        "\t\tlights and light filters only: monitors textures referenced by lights and light filters.\n"
+        "\t\tfull: monitors all textures in the scene.");
+
     // Grouping the attributes for Torch - the order of
     // the attributes should be the same as how they are defined.
     sceneClass.setGroup("Frame", sMinFrameKey);
@@ -1247,6 +1266,8 @@ SceneObjectInterface SceneVariables::declare(SceneClass& sceneClass)
     sceneClass.setGroup("Global Toggles", sPropagateVisibilityBounceType);
     sceneClass.setGroup("Global Toggles", sShadowTerminatorFix);
     sceneClass.setGroup("Global Toggles", sCryptomatteMultiPresence);
+
+    sceneClass.setGroup("Caching", sTextureUpdateMode);
 
     sceneClass.setGroup("Driver", sMachineId);
     sceneClass.setGroup("Driver", sNumMachines);
