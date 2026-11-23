@@ -173,9 +173,14 @@
 
 #define DECLARE_ATTRS_CLEAR_RADIUS                                                                  \
     attrClearRadius = sceneClass.declareAttribute<rdl2::Float>("clear_radius", 0.f);                \
-    sceneClass.setMetadata(attrClearRadius, "comment", "Shadows less than this distance "           \
-                           "from the light are ignored. Setting this value to 0.0 or less "         \
-                           "effectively disables this feature.");                                   \
+    sceneClass.setMetadata(attrClearRadius, "comment", "Surfaces closer than this distance "        \
+                           "to the light don't block it, so they cast no shadows from it. An "      \
+                           "object partly inside this distance casts shadows only from its parts "  \
+                           "outside it. Setting this value to "                                     \
+                           "0.0 or less effectively disables this feature. When "                   \
+                           "clear_radius_falloff_distance is greater than 0, it is instead the "    \
+                           "distance of the light-receiving point from the light that is used: "    \
+                           "points closer than clear_radius receive no shadows from the light.");   \
                                                                                                     \
     attrClearRadiusFalloffDistance =                                                                \
         sceneClass.declareAttribute<rdl2::Float>("clear_radius_falloff_distance", 0.f);             \

@@ -77,7 +77,8 @@ Light::declare(SceneClass& sceneClass)
     sceneClass.setMetadata(sMbKey, SceneClass::sComment,
             "Whether motion-blur is active for this light. "
             "When set to true, the scene's illumination will correctly account for any blur() "
-            "applied to the light's transformation matrix.");
+            "applied to the light's transformation matrix. "
+            "Motion blur must also be enabled with the SceneVariables attribute enable_motion_blur.");
 
     sVisibleInCameraKey = sceneClass.declareAttribute<Int>("visible_in_camera", 2,
         rdl2::FLAGS_ENUMERABLE, INTERFACE_GENERIC, { "visible in camera" });
@@ -111,8 +112,8 @@ Light::declare(SceneClass& sceneClass)
 
     sMaxShadowDistanceKey = sceneClass.declareAttribute<Float>("max_shadow_distance", 0.f);
     sceneClass.setMetadata(sMaxShadowDistanceKey, SceneClass::sComment,
-            "The distance from the light beyond which a light-receiving surface will no longer "
-            "receive shadows cast from that light.\n"
+            "The distance from a light-receiving point, measured along the shadow ray towards the light, beyond "
+            "which objects no longer cast shadows from that light onto the point. 0 means no limit.\n"
             "Note that the distance is thresholded for each occlusion ray cast for this light, it is possible "
             "for a receiving point to lie at an intermediate distance such that some parts of the light are "
             "closer than the threshold distance and other parts beyond it, in which case the point will appear"
@@ -120,8 +121,8 @@ Light::declare(SceneClass& sceneClass)
 
     sMinShadowDistanceKey = sceneClass.declareAttribute<Float>("min_shadow_distance", 0.f);
     sceneClass.setMetadata(sMinShadowDistanceKey, SceneClass::sComment,
-            "The distance from the light before which a light-receiving surface will no longer "
-            "receive shadows cast from that light.\n"
+            "The distance from a light-receiving point, measured along the shadow ray towards the light, within "
+            "which objects do not cast shadows from that light onto the point.\n"
             "Note that the distance is thresholded for each occlusion ray cast for this light, it is possible "
             "for a receiving point to lie at an intermediate distance such that some parts of the light are "
             "closer than the threshold distance and other parts beyond it, in which case the point will appear"
@@ -168,7 +169,8 @@ Light::declare(SceneClass& sceneClass)
     sceneClass.setMetadata(sTextureFilterKey, SceneClass::sComment,
             "The filtering mode to apply to the texture. Nearest neighbor is the cheapest filtering mode "
             "but produces a blocky result. Switch linear filtering on for a smoother result. Additionally, "
-            "mip-mapping can be switched on with either nearest neighbor or linear filtering.");
+            "mip-mapping can be switched on with either nearest neighbor or linear filtering. "
+            "Only EnvLight and DistantLight use mip-mapping; on other lights the mip options have no effect.");
 
     sTextureKey = sceneClass.declareAttribute<String>("texture", "", rdl2::FLAGS_FILENAME);
     sceneClass.setMetadata(sTextureKey, SceneClass::sComment,
@@ -176,7 +178,9 @@ Light::declare(SceneClass& sceneClass)
         "Any file format supported by OpenImageIO can be used. "
         "The texture is used in 2 ways - for looking up the texture value at the intersection point when a ray "
         "hits the light, and for building a lookup-table-based auxilliary data structure used for "
-        "distributing light samples over the texture.");
+        "distributing light samples over the texture.\n"
+        "Color correction is applied to the texture in this order: saturation, contrast, gamma, gain and offset, "
+        "then temperature, after which negative values are clamped to 0.");
 
     sSaturationKey = sceneClass.declareAttribute<Rgb>("saturation", Rgb(1.0f));
     sceneClass.setMetadata(sSaturationKey, SceneClass::sComment,
@@ -195,7 +199,7 @@ Light::declare(SceneClass& sceneClass)
     sceneClass.setMetadata(sGammaKey, SceneClass::sComment,
         "Per-channel gamma used in color-correcting the light's texture, if one is present. "
         "This is achieved by applying the following formula for each channel:\n"
-        "  For input >  0, output = pow(input, gamma)\n"
+        "  For input >  0, output = pow(input, 1 / gamma)\n"
         "  For input <= 0, output = input");
 
     sGainKey = sceneClass.declareAttribute<Rgb>("gain", Rgb(1.0f));
@@ -224,7 +228,7 @@ Light::declare(SceneClass& sceneClass)
 
     sTextureRotationKey = sceneClass.declareAttribute<Float>("texture_rotation", 0.0f);
     sceneClass.setMetadata(sTextureRotationKey, SceneClass::sComment,
-        "Clockwise rotation angle in degrees.");
+        "Clockwise rotation angle in degrees. The texture rotates about its (0, 0) corner, not its center.");
 
     sTextureTranslationKey = sceneClass.declareAttribute<Vec2f>("texture_translation", Vec2f(0.0f));
     sceneClass.setMetadata(sTextureTranslationKey, SceneClass::sComment,
@@ -234,7 +238,8 @@ Light::declare(SceneClass& sceneClass)
 
     sTextureCoverageKey = sceneClass.declareAttribute<Vec2f>("texture_coverage", Vec2f(1.0f));
     sceneClass.setMetadata(sTextureCoverageKey, SceneClass::sComment,
-        "Texture scales in the u and v-directions.");
+        "The fraction of the light, in u and v, that the texture covers. Values less than 1 shrink the "
+        "texture towards its (0, 0) corner, and the rest of the light shows texture_border_color.");
 
     sTextureRepsUKey = sceneClass.declareAttribute<Float>("texture_reps_u", 1.0f);
     sceneClass.setMetadata(sTextureRepsUKey, SceneClass::sComment,
